@@ -180,9 +180,29 @@
       host.parentNode.insertBefore(note, host);
     }
   }
+  /* ---------- rebrand: frase de donación del onboarding ---------------- */
+  /* El onboarding aún enseña la frase con solo «Crohn y colitis»; la frase
+     paraguas («fighting chronic diseases») ya viaja TRADUCIDA en el paquete
+     → intercambio en caliente hasta que CD lo arregle en origen (detectado
+     por Gerhard el 2 ago probando la webapp). Idempotente: si la frase
+     vieja no está, no toca nada. */
+  var OLD_DONATE = "Chronic Friends donates part of every subscription to research centres and hospitals fighting Crohn's disease and ulcerative colitis.";
+  var NEW_DONATE = "Part of every subscription is donated to research centres and hospitals fighting chronic diseases.";
+  function fixDonationCopy() {
+    if (typeof window.tr !== 'function') return;
+    var oldTxt, newTxt;
+    try { oldTxt = tr(OLD_DONATE); newTxt = tr(NEW_DONATE); } catch (e) { return; }
+    if (!oldTxt || !newTxt || oldTxt === newTxt) return;
+    var els = document.querySelectorAll('div,p,span');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.childElementCount === 0 && (el.textContent || '').trim() === oldTxt.trim()) el.textContent = newTxt;
+    }
+  }
   try {
     new MutationObserver(function () {
       try { injectAlarmNote(); } catch (e) {}
+      try { fixDonationCopy(); } catch (e) {}
     }).observe(document.documentElement, { childList: true, subtree: true });
   } catch (e) {}
 
