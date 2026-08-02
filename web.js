@@ -278,11 +278,15 @@
     wrap.addEventListener('click', function (ev) { if (ev.target === wrap) done(); });
     document.body.appendChild(wrap);
   }
+  /* maybeShowRoutineTip RETIRADA (3 ago 00:20): el zip 2026-08-03-0013 de CD
+     ya trae la pantalla del botón azul DENTRO del onboarding (i18nob1.js) —
+     la tarjeta provisional se apaga para no explicar lo mismo dos veces.
+     La función queda por si un export antiguo la necesitara de vuelta. */
+  void maybeShowRoutineTip;
   try {
     new MutationObserver(function () {
       try { injectAlarmNote(); } catch (e) {}
       try { fixDonationCopy(); } catch (e) {}
-      try { maybeShowRoutineTip(); } catch (e) {}
     }).observe(document.documentElement, { childList: true, subtree: true });
   } catch (e) {}
 
