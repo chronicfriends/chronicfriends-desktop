@@ -80,6 +80,15 @@
       vi: "Hãy điền Journal của bạn thật kỹ một lần. Từ ngày hôm sau, bạn sẽ thấy nút màu xanh này trong Journal — một cú nhấp sao chép bản ghi hôm qua sang hôm nay. Bạn cũng sẽ thấy nút này khi xác nhận thuốc hằng ngày từ báo thức hoặc thông báo — một cú nhấp ở đó cũng ghi lại ngày của bạn. Và nếu thói quen của bạn theo lời khuyên của ứng dụng, mỗi cú nhấp mang một ý nghĩa lớn hơn: bạn đã xây thêm một ngày tốt lành. Building good days — đó chính là Chronic Friends.",
       ar: "املأ يومياتك (Journal) بعناية مرة واحدة. من اليوم التالي ستجد هذا الزر الأزرق في اليوميات (Journal) — نقرة واحدة تنسخ تسجيل الأمس إلى اليوم. ستجده أيضًا عند تأكيد دوائك اليومي من منبهه أو إشعاره — نقرة واحدة هناك تسجّل يومك أيضًا. وإذا كان روتينك يتبع نصائح التطبيق، فكل نقرة تعني شيئًا أكبر: لقد بنيت يومًا جيدًا آخر. Building good days — هذه هي Chronic Friends."
     },
+    "The Journal tab, in the bottom bar": {
+      es: "La pestaña del Diario, en la barra de abajo", ca: "La pestanya del Diari, a la barra de baix",
+      fr: "L'onglet Journal, dans la barre du bas", de: "Der Journal-Tab in der unteren Leiste",
+      it: "La scheda del Diario, nella barra in basso", pt: "O separador do Diário, na barra de baixo",
+      zh: "底部栏中的日记（Journal）标签", ja: "下部バーのJournalタブ", ko: "하단 바의 Journal 탭",
+      hi: "नीचे की पट्टी में Journal टैब", id: "Tab Journal di bilah bawah", tr: "Alt çubuktaki Journal sekmesi",
+      ru: "Вкладка Journal на нижней панели", vi: "Thẻ Journal ở thanh dưới cùng",
+      ar: "تبويب اليوميات (Journal) في الشريط السفلي"
+    },
     "Continue with the free plan": {
       es: "Continuar con el plan gratis", ca: "Continua amb el pla gratuït",
       fr: "Continuer avec l'offre gratuite", de: "Mit dem Gratis-Plan fortfahren",
@@ -278,6 +287,37 @@
     wrap.addEventListener('click', function (ev) { if (ev.target === wrap) done(); });
     document.body.appendChild(wrap);
   }
+  /* ---------- imagen de la barra con el Diario en la pantalla de CD ---- */
+  /* Pedido de Gerhard (3 ago 00:15): en la pantalla del onboarding del botón
+     azul (que CD ya trae en origen), bajo la frase del Diario, enseñar la
+     imagen EXACTA de la barra inferior con la pestaña del Diario encendida
+     y decir que es esa sección. Capa aditiva hasta que CD lo traiga. */
+  var JOURNAL_SENTENCE = "From the next day on, you'll find this blue button in the Journal — one click copies yesterday's entry into today.";
+  function injectJournalBar() {
+    if (typeof window.tr !== 'function') return;
+    var target = tr(JOURNAL_SENTENCE);
+    if (!target) return;
+    var els = document.querySelectorAll('div,p');
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.childElementCount !== 0 || (el.textContent || '').trim() !== target.trim()) continue;
+      if (!el.parentNode || el.parentNode.querySelector('.cf-web-journal-bar')) continue;
+      var box = document.createElement('div');
+      box.className = 'cf-web-journal-bar';
+      box.style.cssText = 'margin:10px 0 4px;text-align:center;';
+      var img = document.createElement('img');
+      img.src = '/icons/journal-tab-bar.png';
+      img.alt = tr('The Journal tab, in the bottom bar');
+      img.style.cssText = 'width:100%;max-width:340px;display:block;margin:0 auto;border-radius:14px;border:1px solid rgba(0,0,0,.10);box-shadow:0 4px 14px rgba(0,0,0,.10);';
+      var cap = document.createElement('div');
+      cap.className = 'muted';
+      cap.textContent = wtr('The Journal tab, in the bottom bar');
+      cap.style.cssText = 'font-size:12px;font-weight:600;margin-top:6px;opacity:.8;';
+      box.appendChild(img); box.appendChild(cap);
+      el.parentNode.insertBefore(box, el.nextSibling);
+    }
+  }
+
   /* maybeShowRoutineTip RETIRADA (3 ago 00:20): el zip 2026-08-03-0013 de CD
      ya trae la pantalla del botón azul DENTRO del onboarding (i18nob1.js) —
      la tarjeta provisional se apaga para no explicar lo mismo dos veces.
@@ -287,6 +327,7 @@
     new MutationObserver(function () {
       try { injectAlarmNote(); } catch (e) {}
       try { fixDonationCopy(); } catch (e) {}
+      try { injectJournalBar(); } catch (e) {}
     }).observe(document.documentElement, { childList: true, subtree: true });
   } catch (e) {}
 
