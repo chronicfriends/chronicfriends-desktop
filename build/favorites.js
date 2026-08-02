@@ -1,0 +1,15 @@
+(function(){/* ===================================================================
+   favorites.jsx (Phase 7) — ONE shared favorites store + star toggle
+   for the premium libraries (Entertainment / Meditation / Tools;
+   flare namespaces arrive in Phase 8).
+   • CFFavs — localStorage cf_favs_v1 (per-account via the cfns shim,
+     device-local only), namespaced arrays so ids can't collide:
+     { games:[...], comfort:[...], lifetools:[...] }. Arrays keep the
+     ORDER items were starred — the Favorites group lists them in
+     that order. Subscribe/notify like the app's other stores.
+   • CFFavStar — flat, static star toggle (outline = off, filled = on;
+     no motion). span[role=button] because item rows are <button>s
+     (no nested buttons); 34px tap target; accessible labels in all
+     16 locales; stopPropagation so the row doesn't open.
+   =================================================================== */const CF_FAVS_KEY='cf_favs_v1';function cfFavsLoad(){try{const r=JSON.parse(localStorage.getItem(CF_FAVS_KEY));if(r&&typeof r==='object'&&!Array.isArray(r))return r;}catch(e){}return{};}const CFFavs={data:cfFavsLoad(),listeners:new Set(),subscribe(fn){this.listeners.add(fn);return()=>this.listeners.delete(fn);},persist(){try{localStorage.setItem(CF_FAVS_KEY,JSON.stringify(this.data));}catch(e){}},emit(){this.persist();this.listeners.forEach(fn=>fn());try{window.dispatchEvent(new Event('cf-favs'));}catch(e){}},list(ns){const a=this.data[ns];return Array.isArray(a)?a:[];},isFav(ns,id){return this.list(ns).indexOf(id)!==-1;},toggle(ns,id){const arr=this.list(ns).slice();const i=arr.indexOf(id);if(i===-1)arr.push(id);else arr.splice(i,1);this.data={...this.data,[ns]:arr};this.emit();return i===-1;}};function useFavs(){const[,force]=React.useState(0);React.useEffect(()=>CFFavs.subscribe(()=>force(x=>x+1)),[]);return CFFavs;}function CFFavStar({ns,id,tone}){useT();const favs=useFavs();const on=favs.isFav(ns,id);const label=on?tr('Remove from favorites'):tr('Add to favorites');const act=e=>{e.stopPropagation();e.preventDefault();CFFavs.toggle(ns,id);};return/*#__PURE__*/React.createElement("span",{role:"button",tabIndex:0,"aria-label":label,"aria-pressed":on,onClick:act,onKeyDown:e=>{if(e.key==='Enter'||e.key===' ')act(e);},style:{flex:'none',width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',borderRadius:12,color:on?'#ffd76a':tone==='light'?'var(--muted-2)':'rgba(255,255,255,.42)'}},/*#__PURE__*/React.createElement("svg",{viewBox:"0 0 24 24",width:"18",height:"18",fill:on?'currentColor':'none',stroke:"currentColor",strokeWidth:"1.8",strokeLinejoin:"round","aria-hidden":"true"},/*#__PURE__*/React.createElement("path",{d:"M12 3.6l2.5 5.2 5.7.7-4.2 3.9 1.1 5.6L12 16.2 6.9 19l1.1-5.6-4.2-3.9 5.7-.7z"})));}Object.assign(window,{CFFavs,useFavs,CFFavStar});
+})();

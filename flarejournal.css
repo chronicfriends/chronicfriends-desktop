@@ -1,0 +1,26 @@
+/* ===================================================================
+   FLARE MODE — JOURNAL re-theme (additive; loaded after flareday.css)
+   The Daily check-in / food / tracker-tool Journal is day-built and now
+   renders inside the warm-dark Flare shelter (.rf-screen). Token-based
+   surfaces already remap through flareday.css; this sheet catches the
+   SOLID cards whose light backgrounds are set inline (so var(--white)
+   can't reach them without !important). Text and neutral input tracks
+   that CSS can't select are handled in checkin.jsx / foodscan.jsx via
+   cfFlareUI(). Everything here is scoped to .rf-screen, so day mode is
+   left exactly as it was.
+   =================================================================== */
+
+/* Every solid journal card (Food Scan, Food Journal, "Same routine as
+   yesterday", check-in sections, tracker-tool cards) → night surface. */
+.rf-screen .card-solid { background: var(--white) !important; }
+
+/* Text / number / textarea fields anywhere in the journal (core check-in
+   AND every tracker-tool: body-map notes, pacing planner, glucose diary…)
+   → night field with light text. Inline #fff backgrounds are overridden. */
+.rf-screen .screen-scroll input[type="text"],
+.rf-screen .screen-scroll input[type="number"],
+.rf-screen .screen-scroll input:not([type]),
+.rf-screen .screen-scroll textarea {
+  background: var(--white) !important;
+  color: var(--ink) !important;
+}

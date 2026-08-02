@@ -1,0 +1,67 @@
+/* ===================================================================
+   NIGHT GAMES — flare-mode arcade (gn-*). Builds on the gm-* chrome;
+   this file only adds the deep-night skin + game-specific pieces.
+   =================================================================== */
+.gm-veil.gm-night{background:radial-gradient(130% 95% at 50% 0%,#0b2038 0%,#081627 50%,#040b16 100%);color:#eaf6ff;}
+.gm-night .gm-grid-bg{background-image:radial-gradient(1.2px 1.2px at 12% 18%,rgba(190,235,255,.5),transparent 60%),radial-gradient(1px 1px at 78% 9%,rgba(255,255,255,.4),transparent 60%),radial-gradient(1.4px 1.4px at 33% 64%,rgba(140,230,220,.35),transparent 60%),radial-gradient(1px 1px at 62% 38%,rgba(255,255,255,.3),transparent 60%),radial-gradient(1.2px 1.2px at 88% 74%,rgba(160,220,255,.3),transparent 60%),radial-gradient(1px 1px at 18% 88%,rgba(255,255,255,.25),transparent 60%);background-size:auto;mask-image:none;-webkit-mask-image:none;}
+.gm-night .gm-head-t span{color:#8fb4d6;}
+.gm-night .gm-intro{color:#b9d4ea;}
+.gm-night .gm-sec{color:#7f9cc0;}
+.gm-night .gm-sec::after{background:linear-gradient(90deg,rgba(130,180,220,.35),transparent);}
+.gm-night .gm-ctag{color:#a5c3dd;}
+.gm-night .gm-note{color:#8ba7c8;}
+.gm-night .gm-panel{background:linear-gradient(160deg,rgba(24,48,80,.96),rgba(10,22,40,.96));}
+.gm-night .gm-over{background:rgba(5,8,22,.62);}
+.gm-night .gm-panel p{color:#b9d4ea;}
+/* ---------- Star Thread ---------- */
+.gn-sky{flex:1;display:flex;flex-direction:column;min-height:0;}
+.gn-sky svg{flex:1;width:100%;touch-action:none;}
+.gn-star{cursor:pointer;}
+.gn-star .core{fill:#dfeeff;transition:r .2s,fill .2s;}
+.gn-star.done .core{fill:#9fd8ff;}
+.gn-star.next .core{animation:gnTwinkle 1.1s ease-in-out infinite;}
+@keyframes gnTwinkle{0%,100%{opacity:.55;}50%{opacity:1;}}
+.gn-thread{stroke:#9fd8ff;stroke-width:2.2;stroke-linecap:round;filter:drop-shadow(0 0 5px rgba(159,216,255,.8));}
+.gn-guide{stroke:#5b7ea6;stroke-width:1;stroke-dasharray:2 6;opacity:.35;}
+.gn-banner{flex:none;text-align:center;padding:10px 16px 2px;animation:gmPop .4s cubic-bezier(.34,1.4,.5,1);}
+.gn-banner b{display:block;font-size:17px;font-weight:800;color:#dfeeff;letter-spacing:.02em;}
+.gn-banner span{display:block;font-size:11.5px;font-weight:600;color:#8fb4d6;margin-top:2px;}
+/* ---------- Kintsugi ---------- */
+.gn-kin{flex:1;display:flex;flex-direction:column;min-height:0;}
+.gn-kin svg{flex:1;width:100%;touch-action:none;}
+.gn-shard{fill:#274b66;stroke:rgba(190,230,255,.35);stroke-width:1.2;cursor:grab;}
+.gn-shard.lock{fill:#2e5877;stroke:rgba(190,230,255,.2);}
+.gn-seam{fill:none;stroke:#ffd76a;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 6px rgba(255,215,106,.9));}
+/* ---------- Frost Panes ---------- */
+.gn-frost-wrap{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;}
+.gn-frost{display:grid;gap:4px;padding:12px;border-radius:22px;background:linear-gradient(160deg,rgba(150,210,255,.10),rgba(150,210,255,.04));box-shadow:inset 0 0 0 1px rgba(170,220,255,.22);}
+.gn-fcell{border:none;border-radius:9px;cursor:pointer;position:relative;background:linear-gradient(160deg,rgba(190,232,255,.30),rgba(190,232,255,.12));box-shadow:inset 0 0 0 1px rgba(200,240,255,.25);transition:background .15s;}
+.gn-fcell.fill{background:linear-gradient(160deg,#bfe8ff,#6db6e8);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5),0 0 12px -3px rgba(140,210,255,.7);}
+.gn-fcell.mark::after{content:'';position:absolute;inset:38%;border-radius:50%;background:rgba(160,200,230,.55);}
+.gn-fcell.solved{background:linear-gradient(160deg,var(--pc,#bfe8ff),color-mix(in oklab,var(--pc,#6db6e8) 70%,#0a1626));}
+.gn-clue{display:flex;align-items:center;justify-content:flex-end;gap:5px;font-size:11px;font-weight:800;color:#9fc6e8;padding-inline-end:7px;}
+.gn-clue.col{flex-direction:column;justify-content:flex-end;padding:0 0 6px;}
+/* ---------- Haiku Garden ---------- */
+.gn-haiku-scene{position:relative;border-radius:22px;overflow:hidden;flex:none;box-shadow:inset 0 0 0 1px rgba(170,220,255,.18),0 18px 40px -22px rgba(0,0,0,.9);}
+.gn-hline{display:flex;align-items:center;gap:8px;margin-top:9px;}
+.gn-harr{width:44px;height:48px;border-radius:14px;border:none;cursor:pointer;flex:none;display:flex;align-items:center;justify-content:center;color:#cfe7ff;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
+.gn-harr:active{transform:scale(.92);}
+.gn-htxt{flex:1;min-width:0;text-align:center;font-size:14.5px;font-weight:700;line-height:1.35;color:#eaf6ff;font-style:italic;padding:10px 6px;border-radius:14px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,255,255,.09);}
+/* ---------- Sumi ---------- */
+.gn-paper{position:relative;border-radius:20px;background:linear-gradient(160deg,#f2ecdd,#e6ddc8);box-shadow:inset 0 0 0 1px rgba(120,100,60,.25),0 18px 40px -22px rgba(0,0,0,.9);flex:none;overflow:hidden;}
+.gn-paper canvas{border-radius:20px;box-shadow:none;}
+.gn-seal{position:absolute;inset-inline-end:14px;bottom:14px;width:40px;height:40px;border-radius:9px;background:#c23b2e;color:#f6e8dc;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;letter-spacing:.05em;box-shadow:0 4px 12px -4px rgba(120,20,10,.6);animation:gmPop .4s cubic-bezier(.34,1.4,.5,1);}
+.gn-rank{text-align:center;margin-top:10px;font-size:15px;font-weight:800;color:#eaf6ff;}
+.gn-rank small{display:block;font-size:11px;font-weight:600;color:#8fb4d6;margin-top:2px;}
+/* ---------- shared night chips row ---------- */
+.gn-chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;padding:10px 0 2px;flex:none;}
+.gn-chipbtn{border:none;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:800;padding:9px 14px;border-radius:13px;background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);color:#dfeeff;}
+.gn-chipbtn.on{background:color-mix(in oklab,var(--acc,#9fd8ff) 25%,transparent);box-shadow:inset 0 0 0 1.5px color-mix(in oklab,var(--acc,#9fd8ff) 55%,transparent);}
+.gn-chipbtn:active{transform:scale(.95);}
+@media (prefers-reduced-motion: reduce){.gn-star.next .core{animation:none;}}
+
+/* ---- v3: night ambience tint ---- */
+.gm-night .gm-amb.a{background:radial-gradient(circle,#2b7bd8,transparent 70%);}
+.gm-night .gm-amb.b{background:radial-gradient(circle,#20b8a8,transparent 70%);}
+.gm-night .gm-spark{background:#d8f2ff;box-shadow:0 0 8px 2px rgba(170,225,255,.5);}
+.gm-night .gm-head-t b{text-shadow:0 0 18px rgba(150,210,255,.35);}

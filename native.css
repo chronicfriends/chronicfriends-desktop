@@ -1,0 +1,81 @@
+/* ===== Capa nativa (solo runtime) =====================================
+   La app de Claude Design se dibuja dentro de un "teléfono" CSS (.phone con
+   bisel, notch y escalado fit()). En el dispositivo real la pantalla ES el
+   teléfono, así que esta capa lo pliega a pantalla completa. Es 100% aditiva:
+   el código del diseño no se toca; solo se anulan el marco y el escalado.
+   Los !important vencen tanto a styles.css como a los estilos inline que
+   pone fit() (transform) y el render de app.jsx (height:732px del .stage). */
+
+html, body { height: 100%; overflow: hidden; }
+
+.stage {
+  width: 100% !important;
+  height: 100% !important;
+  padding: 0 !important;
+}
+
+.phone {
+  width: 100% !important;
+  height: 100% !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  transform: none !important;   /* anula el scale() de fit() */
+  background: transparent !important;
+}
+.phone::after { display: none !important; }   /* botones laterales dibujados */
+
+.screen { border-radius: 0 !important; }
+.screen::after { display: none !important; }  /* anillo anti-aliasing del bisel */
+
+/* ===== Pantalla completa de verdad (petición de Gerhard, 6 jul 2026) =====
+   El contenido llega hasta los bordes físicos, exactamente como en el preview
+   de Claude Design: el héroe del Home pasa por debajo del reloj (el diseño ya
+   trae un degradado para que se lea) y la barra de pestañas toca el borde
+   inferior. Las cabeceras de sección (Comunitat/Diari/Medicació) ya reservan
+   45px propios en el diseño, así que NO se les añade ningún desplazamiento
+   (hacerlo hundía los títulos detrás de la onda — bug corregido 6 jul 2026). */
+
+.notch { display: none !important; }          /* notch falso: el real ya existe */
+
+/* La tabbar del diseño trae padding 10px arriba / 26px abajo (colchón del
+   indicador de inicio del preview), inflados además por el zoom 1.3. Petición
+   de Gerhard (6 jul 2026): SIN márgenes arriba/abajo del footer, botones al
+   mismo tamaño — solo se quita el aire (los .tab ya llevan 4px propios). */
+.tabbar { padding-top: 0 !important; padding-bottom: 10px !important; }
+
+/* ===== FLARE RADAR — reestructurado para pantalla real (6 jul 2026) =======
+   Con el zoom global 1.3 el ancho útil baja a ~300px y el radar del diseño
+   (pensado para 393px) desbordaba: chips de leyenda cortados, sparkline
+   fuera de la tarjeta y texto en columna de una palabra. Junto a estos
+   estilos van 4 parches JS en build/flareradar.js (re-aplicados por
+   actualizar-desde-design.sh en cada update). */
+
+/* leyenda: los 3 chips siempre caben — número arriba, etiqueta debajo si hace falta */
+.fr-counts { gap: 6px; }
+.fr-count { flex: 1 1 0; min-width: 0; flex-wrap: wrap; justify-content: center;
+  gap: 4px 6px; padding: 8px 5px; }
+.fr-count-k { text-align: center; line-height: 1.15; }
+
+/* tarjeta de señal enfocada: el bloque «% FLARE PUSH» no aplasta el título */
+.mfr-fpctlab { max-width: 54px; }
+
+/* subtítulo del encabezado: 2 líneas en vez de cortarse con «…» */
+.fr-sub { white-space: normal; display: -webkit-box;
+  -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+
+/* nombre del punto seleccionado en el radar: nunca más ancho que el propio radar */
+.fr-dot-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+
+/* gauge del titular: un pelín menos de aire para que quepa la sparkline */
+.mfr-gauge { gap: 11px; padding: 11px 12px; }
+
+/* FIX device-only (WKWebView, 7 jul 2026): la columna central del titular
+   (RISCHIO / Basso) se aplastaba a ~1 carácter y la regla global de word-break
+   la partía letra a letra ("RIS/CHI/O", "B/a/ss/o"). En Chromium (preview de
+   Claude Design) no se ve, por eso el diseño no lo arregla. Solución: darle
+   ancho mínimo (así flex-wrap SÍ envuelve la gráfica si no cabe) y que esas
+   dos etiquetas no rompan palabra. */
+.mfr-gauge > div:has(> .mfr-gauge-lab) { min-width: 96px; flex: 1 1 96px; }
+.mfr-gauge-eyebrow, .mfr-gauge-lab { overflow-wrap: normal; word-break: normal; }
+.mfr-gauge-lab { white-space: nowrap; }

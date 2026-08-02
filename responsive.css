@@ -1,0 +1,43 @@
+/* ============================================================
+   RESPONSIVE GUARDRAILS — iPhone 15 Pro (393 px), project-wide
+   ------------------------------------------------------------
+   Technical rules ONLY — no visual redesign. Loaded LAST so it
+   gently reinforces the base styles without overriding intent.
+
+   The `.phone` element stays a fixed 393×852 device frame (that
+   IS the iPhone 15 Pro); app.jsx `fit()` scales it to the
+   viewport. These rules govern the CONTENT inside that frame.
+   See CLAUDE.md → "Responsive rules" for the full standing spec.
+   ============================================================ */
+
+/* --- Device safe-area tokens (R6) ---------------------------
+   Real-device full-bleed builds read these. In the scaled
+   preview mockup env() resolves to 0, so nothing shifts here. */
+:root{
+  --safe-top:    env(safe-area-inset-top,    0px);
+  --safe-right:  env(safe-area-inset-right,   0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left,    0px);
+}
+
+/* --- R2: media never forces horizontal overflow / side bands */
+img, video { max-width: 100%; }
+
+/* --- R2: belt-and-suspenders — no horizontal scroll escapes.
+   (body already has overflow:hidden; .screen-scroll already
+   has overflow-x:hidden — this just guarantees it globally.) */
+html, body { overflow-x: hidden; }
+
+/* --- R4: long words / URLs WRAP instead of being clipped or
+   pushing the width out. This does NOT touch elements that opt
+   into single-line chrome via white-space:nowrap (tab labels,
+   badges, PDF title/sub) — those keep their intentional
+   truncation. overflow-wrap is inherited, so setting it on the
+   app root cascades to all text. */
+.screen { overflow-wrap: break-word; }
+
+/* --- R6: the bottom tab bar clears the home indicator on a
+   real device. max() keeps the existing 26px in the preview
+   (where --safe-bottom is 0), so there is no visual change
+   here — it only grows on a device with a real inset. */
+.tabbar { padding-bottom: max(26px, calc(10px + var(--safe-bottom))); }

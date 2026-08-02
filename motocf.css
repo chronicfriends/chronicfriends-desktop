@@ -1,0 +1,41 @@
+/* MOTO CF — retro arcade chrome (flare-mode night arcade) */
+.mcf-px{font-family:'Press Start 2P','Courier New',monospace;letter-spacing:.5px}
+.mcf-stage{position:relative;flex:0 0 auto;background:#050507;overflow:hidden;border-radius:14px;margin:0 2px;user-select:none;-webkit-user-select:none;touch-action:none}
+.mcf-center{min-height:430px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:14px 10px}
+.mcf-img{max-width:100%;max-height:320px;object-fit:contain;image-rendering:pixelated;pointer-events:none}
+@keyframes mcfBlink{0%,55%{opacity:1}56%,100%{opacity:0}}
+.mcf-blink{animation:mcfBlink 1.05s steps(1) infinite}
+@keyframes mcfBar{from{width:0}to{width:100%}}
+.mcf-loadbar{width:70%;height:10px;margin-top:16px;border:2px solid #2a5a2e;background:#0a120b;border-radius:2px;overflow:hidden}
+.mcf-loadbar i{display:block;height:100%;background:repeating-linear-gradient(90deg,#57e857 0 8px,#2e8838 8px 12px);animation:mcfBar 2s steps(24) forwards}
+.mcf-mapwrap{position:relative;width:100%;aspect-ratio:1229/864}
+.mcf-mapwrap .mcf-img{width:100%;height:100%;max-height:none}
+.mcf-hot{position:absolute;background:transparent;border:0;border-radius:6px;cursor:pointer}
+.mcf-hot.on{box-shadow:0 0 0 3px #fff,0 0 0 6px #f0603c;animation:mcfBlink .28s steps(1) infinite}
+/* music select */
+.mcf-music{background:#2e7d33;min-height:430px;display:flex;flex-direction:column;padding:22px 12px 14px}
+.mcf-mtitle{color:#fff;font-size:10px;text-align:center;text-shadow:2px 2px 0 #123;margin-bottom:18px}
+.mcf-songs{display:flex;flex-direction:column;gap:13px;flex:1}
+.mcf-song{position:relative;display:flex;align-items:center;gap:8px;border:0;cursor:pointer;padding:9px 8px;border-radius:4px;background:repeating-linear-gradient(180deg,transparent 0 6px,rgba(6,26,10,.85) 6px 7.5px) 0 50%/100% 34px no-repeat;text-align:left}
+.mcf-song.on{background-color:rgba(255,255,255,.13)}
+.mcf-clef{color:#0a220e;font-size:22px;line-height:0;flex:0 0 auto}
+.mcf-songname{font-size:13px;color:#57a8f0;text-shadow:2px 0 0 #eef4ff,-2px 0 0 #eef4ff,0 2px 0 #eef4ff,0 -2px 0 #eef4ff,3px 3px 0 #0a220e;white-space:nowrap}
+.mcf-song.on .mcf-songname{color:#8ac8ff}
+.mcf-eq{display:flex;gap:3px;align-items:flex-end;height:16px;margin-left:auto}
+.mcf-eq i{width:4px;background:#f2d43a;animation:mcfEq .5s ease-in-out infinite alternate}
+.mcf-eq i:nth-child(2){animation-delay:.12s}.mcf-eq i:nth-child(3){animation-delay:.24s}.mcf-eq i:nth-child(4){animation-delay:.36s}
+@keyframes mcfEq{from{height:4px}to{height:16px}}
+.mcf-start{margin:16px auto 4px;border:0;background:transparent;color:#f0603c;font-size:11px;cursor:pointer;padding:8px}
+.mcf-start:disabled{color:rgba(255,255,255,.45);cursor:default}
+.mcf-credit{color:#fff;font-size:10px;text-shadow:2px 2px 0 #123}
+/* race */
+.mcf-gridimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;image-rendering:pixelated;opacity:1;transition:opacity .7s linear;pointer-events:none}
+.mcf-gridimg.gone{opacity:0}
+.mcf-canvas{position:relative;display:block;width:100%}
+.mcf-count{position:absolute;top:44%;left:0;right:0;text-align:center;font-size:44px;color:#f2d43a;text-shadow:4px 4px 0 #101018;animation:mcfBlink .42s steps(1) infinite}
+.mcf-count.go{color:#57e857}
+.mcf-ctrls{display:flex;gap:10px;padding:12px 8px 6px}
+.mcf-cbtn{flex:1;min-width:0;height:62px;border-radius:14px;border:1.5px solid rgba(255,255,255,.16);background:rgba(255,255,255,.07);color:#dfe8ff;display:flex;align-items:center;justify-content:center;cursor:pointer;touch-action:none}
+.mcf-cbtn:active{background:rgba(87,232,87,.28);border-color:rgba(87,232,87,.6)}
+.mcf-cbtn.brake{flex:1.3;color:#ffb0a0;border-color:rgba(240,96,60,.45)}
+.mcf-cbtn.brake:active{background:rgba(240,96,60,.3);border-color:rgba(240,96,60,.8)}

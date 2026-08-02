@@ -1,0 +1,192 @@
+/* ===================================================================
+   FLARE MODE — DAY-UI REMAP (additive; loaded after flarehome.css)
+   While Flare mode is on, `.rf-screen` wraps EVERY patient tab — so the
+   day-styled sections (Community, Medication, their sheets and chat
+   overlays) inherit the same bioluminescent night palette as the flare
+   Home & Journal instead of flashing back to bright daylight greens.
+
+   Strategy: remap the day design tokens first (most of the day UI is
+   built on them), then re-skin the handful of day components whose
+   greens/whites are hardcoded in CSS. Day screens are untouched — none
+   of this applies without `.rf-screen`.
+   =================================================================== */
+.rf-screen{
+  /* --- day surface tokens → night indigo --- */
+  --card:#0D1330;                 /* main day surface → deep indigo   */
+  --card-soft:#161E44;
+  --white:#171F45;                /* “solid white” cards → surface    */
+  --ink:#EAF2FF;
+  --ink-soft:#C3D2EE;
+  --muted:#8EA0C6;
+  --muted-2:#7286AD;
+  --mint-100:rgba(46,230,200,.2);
+  --mint-50:rgba(46,230,200,.11);
+  /* --- day greens → cyan / turquoise (same roles) --- */
+  --green-700:#57E6E0;
+  --green-600:#2EE6C8;
+  --green-500:#2EE6C8;
+  --green-450:#57E6E0;
+  --green-400:#57E6E0;
+  --green-300:#7DF0EA;
+  --hdr-top:#1E2A55;
+  --hdr-bot:#0D1330;
+  /* fluorescent “live” dot (banned green → cyan) + Best-CF gold lift */
+  --fluor:#57E6E0;
+  --gold-soft:#F5CE8A;
+  --gold-strong:#F0BE62;
+  /* flare-history report cards (Analytics; additive) — raised night
+     surface + light accents so the light-mode white cards stay readable
+     here. Light mode leaves these undefined, so the inline fallbacks win. */
+  --fr-card:#212C58;
+  --fr-accent:#57E6E0;
+  --fr-pos:#7DF0EA;
+  --fr-note:#F5CE8A;
+  /* default text inside flare screens is light (day text relied on the
+     light canvas + inherited body ink) */
+  color:var(--ink);
+}
+
+/* ===== glass / solid cards ===== */
+.rf-screen .card{
+  background:rgba(23,31,69,.78);
+  border-color:rgba(120,185,235,.16);
+  box-shadow:0 12px 30px -10px rgba(0,0,0,.55),inset 0 1px 1px rgba(160,210,255,.08);
+}
+.rf-screen .card-solid{ box-shadow:0 12px 30px -12px rgba(0,0,0,.5); }
+.rf-screen .lrow + .lrow{ border-top-color:rgba(120,185,235,.14); }
+.rf-screen .set-card{ box-shadow:0 10px 26px -16px rgba(0,0,0,.55); }
+
+/* ===== neumorphic buttons: day green → bioluminescent teal ===== */
+.rf-screen .btn3d{
+  background:linear-gradient(180deg,#3BEAD1 0%,#17B7A5 100%);
+  color:#05121F;
+  box-shadow:0 8px 16px rgba(10,60,70,.5),inset 0 2px 2px rgba(220,255,250,.55),inset 0 -4px 6px rgba(10,90,95,.5);
+}
+.rf-screen .btn3d:active{ box-shadow:0 3px 7px rgba(10,60,70,.5),inset 0 2px 4px rgba(10,90,95,.45); }
+.rf-screen .btn3d.dark{
+  background:radial-gradient(120% 120% at 32% 26%,#233265,#141B3E);
+  color:#BFF6FF;
+  box-shadow:0 7px 14px rgba(0,0,0,.5),inset 0 2px 2px rgba(160,215,255,.2),inset 0 -4px 7px rgba(0,0,0,.45);
+}
+.rf-screen .btn3d.soft{
+  background:linear-gradient(180deg,#232E5E,#161F48);
+  color:var(--ink-soft);
+  box-shadow:0 7px 14px rgba(0,0,0,.42),inset 0 1.5px 1px rgba(160,210,255,.14),inset 0 -3px 6px rgba(0,0,0,.4);
+}
+.rf-screen .icon-btn{
+  color:#BFF6FF;
+  background:radial-gradient(120% 120% at 30% 25%,#26417D,#141B3E);
+  box-shadow:0 5px 10px rgba(0,0,0,.45),inset 0 2px 2px rgba(170,220,255,.22),inset 0 -3px 5px rgba(0,0,0,.5);
+}
+.rf-screen .badge-ic{
+  color:#D8F7FF;
+  background:radial-gradient(120% 120% at 30% 25%,#1F6E86,#123A5C);
+  box-shadow:0 5px 10px rgba(0,0,0,.4),inset 0 2px 2px rgba(255,255,255,.18),inset 0 -3px 5px rgba(0,0,0,.4);
+}
+.rf-screen .badge-ic.lite{ background:radial-gradient(120% 120% at 30% 25%,#3ED3C0,#1E9C8D); }
+
+/* ===== toggles & checks ===== */
+.rf-screen .toggle{
+  background:linear-gradient(180deg,#26305C,#161E44);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.55),inset 0 -1px 1px rgba(160,210,255,.14);
+}
+.rf-screen .toggle.on{
+  background:linear-gradient(180deg,#2EE6C8,#149E92);
+  box-shadow:inset 0 2px 4px rgba(6,60,58,.5),inset 0 -1px 1px rgba(255,255,255,.25);
+}
+.rf-screen .check{
+  background:linear-gradient(180deg,#3BEAD1,#17B7A5);color:#05121F;
+  box-shadow:0 4px 8px rgba(10,60,70,.45),inset 0 1px 2px rgba(255,255,255,.4);
+}
+.rf-screen .check.off{
+  background:linear-gradient(180deg,#232E5E,#161F48);color:#7286AD;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.5);
+}
+
+/* ===== bottom tab bar: active pill green → teal (icon dark for contrast) ===== */
+.rf-screen .tab.active .tab-ic{
+  color:#05121F;
+  background:linear-gradient(180deg,#3BEAD1,#17B7A5);
+  box-shadow:0 6px 12px rgba(20,120,120,.35),inset 0 2px 2px rgba(230,255,252,.5),inset 0 -3px 5px rgba(8,80,84,.45);
+}
+
+/* ===== medication: chips, segmented control, tiles, timeline ===== */
+.rf-screen .tchip{
+  background:var(--white);
+  color:var(--ink-soft);
+  box-shadow:0 3px 8px -3px rgba(0,0,0,.4),inset 0 0 0 1px rgba(120,185,235,.2);
+}
+.rf-screen .tchip.on{
+  background:linear-gradient(180deg,rgba(46,230,200,.26),rgba(46,230,200,.12));
+  color:#7DF0EA;
+  box-shadow:0 3px 8px -3px rgba(0,0,0,.4),inset 0 0 0 1px rgba(87,230,224,.45);
+}
+.rf-screen .seg{ background:#111838; box-shadow:inset 0 2px 5px rgba(0,0,0,.5); }
+.rf-screen .seg button{ color:var(--muted); }
+.rf-screen .seg button.on{
+  color:#05121F;
+  background:linear-gradient(180deg,#3BEAD1,#17B7A5);
+  box-shadow:0 5px 11px rgba(20,120,120,.4),inset 0 2px 2px rgba(230,255,252,.5);
+}
+.rf-screen .stat-tile{ box-shadow:0 10px 24px -14px rgba(0,0,0,.6); }
+.rf-screen .tl-dot{ border-color:#2A365F; background:#171F45; }
+.rf-screen .tl-dot.done{
+  background:linear-gradient(180deg,#3BEAD1,#17B7A5);color:#05121F;border-color:transparent;
+  box-shadow:0 4px 9px rgba(20,140,130,.45);
+}
+.rf-screen .tl-dot.now{ border-color:#57E6E0; background:#171F45; box-shadow:0 0 0 4px rgba(87,230,224,.2); }
+.rf-screen .tl-dot.miss{ border-color:#F472C0; background:#171F45; }
+.rf-screen .tl-dot.skip{ border-color:#2A365F; background:#101736; }
+.rf-screen .tl-line{ background:#232E5E; }
+
+/* ===== sheets & form fields ===== */
+.rf-screen .sheet-backdrop{ background:rgba(4,8,22,.62); }
+.rf-screen .sheet{ background:var(--card-soft); box-shadow:0 -16px 40px -10px rgba(0,0,0,.65); }
+.rf-screen .sheet-grab{ background:#2A365F; }
+.rf-screen .fld input[type=text],
+.rf-screen .fld input[type=number],
+.rf-screen .fld input[type=time]{
+  background:var(--white);color:var(--ink);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.45),inset 0 0 0 1px rgba(120,185,235,.2);
+  color-scheme:dark;
+}
+.rf-screen input::placeholder,
+.rf-screen textarea::placeholder{ color:#5F6F97; }
+
+/* ===== medication alarm overlay → night sky, teal bell ===== */
+.rf-screen .alarm-ov{
+  color:#D8E8FF;
+  background:radial-gradient(120% 80% at 50% 18%,#1D2A5C 0%,#131A3E 48%,#0A0F28 100%);
+}
+.rf-screen .alarm-halo::before,
+.rf-screen .alarm-halo::after{ border-color:rgba(87,230,224,.5); }
+.rf-screen .alarm-bell{
+  background:linear-gradient(180deg,#3BEAD1,#17A79A);color:#05121F;
+  box-shadow:0 14px 30px rgba(0,0,0,.6),inset 0 3px 4px rgba(255,255,255,.4);
+}
+
+/* ===== chat bubbles (friend chats opened from Community) ===== */
+.rf-screen .bubble.them{ background:#1B2A55; color:#D8E8FF; }
+.rf-screen .bubble.me{ background:#212C58; color:var(--ink); box-shadow:0 4px 10px rgba(0,0,0,.4); }
+
+/* ===== Dr. CF overlay + Settings header (opened while in flare) ===== */
+.rf-screen .drcf-header{ background:radial-gradient(130% 120% at 80% 0%,#243879 0%,#131B45 70%); }
+.rf-screen .drcf-online-dot{ border-color:#131B45; }
+.rf-screen .drcf-bubble-dr{ background:#1B2A55; color:#D8E8FF; }
+.rf-screen .drcf-bubble-user{ background:#212C58; }
+.rf-screen .drcf-disclaimer{ background:linear-gradient(135deg,#1C2750,#141B3A); border-color:rgba(87,230,224,.22); }
+.rf-screen .drcf-quick-btn{
+  color:#7DF0EA;
+  background:linear-gradient(180deg,#1E2A55,#161F48);
+  box-shadow:0 3px 8px rgba(0,0,0,.4),inset 0 0 0 1px rgba(87,230,224,.35);
+}
+.rf-screen .drcf-input-bar{ background:rgba(10,15,38,.95); border-top-color:rgba(120,185,235,.14); }
+.rf-screen .drcf-input{
+  background:var(--white);color:var(--ink);
+  box-shadow:inset 0 2px 5px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.3);
+}
+.rf-screen .drcf-send-btn{
+  background:linear-gradient(180deg,#3BEAD1,#17B7A5);color:#05121F;
+  box-shadow:0 5px 12px rgba(20,120,120,.4),inset 0 2px 2px rgba(230,255,252,.5),inset 0 -3px 5px rgba(8,80,84,.45);
+}
+.rf-screen .set-head{ background:radial-gradient(130% 120% at 80% 0%,#243879 0%,#131B45 70%); }

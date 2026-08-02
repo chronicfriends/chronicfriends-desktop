@@ -1,0 +1,287 @@
+/* ===================================================================
+   FLARE HOME — night-skin hero, particle spirits, and the Flare Mode
+   toggle. Additive; loaded after flaremode2.css. Cool bioluminescent
+   accents (cyan / turquoise / electric blue / violet / magenta) that
+   live ONLY in the hero — the refuge stack below keeps its warm-dark
+   palette untouched. Photosensitivity-safe: every pulse is slow and
+   low-amplitude, and disabled under prefers-reduced-motion.
+   =================================================================== */
+
+/* ---------- day↔night in-place crossfade (≤~320ms, single fade) ---------- */
+.cf-home-fade{ animation: cfHomeFade .32s ease both; }
+@keyframes cfHomeFade{ from{ opacity:0; } to{ opacity:1; } }
+@media (prefers-reduced-motion: reduce){ .cf-home-fade{ animation:none; } }
+
+/* ---------- Flare Mode toggle (centred, just above the curved seam, both modes) ---------- */
+.fh-toggle{
+  position:absolute; inset-inline-start:50%; top:433px; transform:translateX(-50%) scale(1.3); z-index:7;
+  display:inline-flex; align-items:center; gap:8px;
+  height:29px; padding:0 9px 0 12px; border-radius:16px;
+  border:1px solid rgba(255,255,255,.28);
+  background:linear-gradient(180deg, rgba(14,44,23,.6), rgba(8,28,15,.68));
+  -webkit-backdrop-filter:blur(7px); backdrop-filter:blur(7px);
+  box-shadow:0 7px 15px -7px rgba(6,28,10,.6), inset 0 1px 1px rgba(255,255,255,.18);
+  cursor:pointer; font-family:inherit; -webkit-tap-highlight-color:transparent;
+  transition:background .3s ease, border-color .3s ease, box-shadow .3s ease, transform .12s ease;
+}
+.fh-toggle::before{ content:""; position:absolute; inset:-8px -7px; } /* ≥44px touch target */
+.fh-toggle:active{ transform:translateX(-50%) scale(1.24); }
+.fh-toggle:focus-visible{ outline:2px solid #57E6E0; outline-offset:2px; }
+.fh-toggle-lbl{
+  font-size:10px; font-weight:800; letter-spacing:.02em; color:#fff; white-space:nowrap;
+  text-shadow:0 1px 3px rgba(0,22,7,.55);
+}
+.fh-toggle-track{
+  position:relative; width:26px; height:15px; border-radius:9px; flex:none;
+  background:rgba(255,255,255,.24); border:1px solid rgba(255,255,255,.22);
+  transition:background .3s ease, border-color .3s ease;
+}
+.fh-toggle-knob{
+  position:absolute; top:1px; inset-inline-start:1px; width:11px; height:11px; border-radius:50%;
+  background:#fff; box-shadow:0 1px 2px rgba(0,0,0,.4);
+  transition:transform .26s cubic-bezier(.4,.1,.3,1), background .3s ease;
+}
+.fh-toggle.on .fh-toggle-track{ background:linear-gradient(90deg,#2EE6C8,#57E6E0); border-color:rgba(140,246,238,.75); }
+.fh-toggle.on .fh-toggle-knob{ transform:translateX(11px); background:#F2FEFF; }
+[dir="rtl"] .fh-toggle.on .fh-toggle-knob{ transform:translateX(-11px); }
+/* ON (night) — bioluminescent glow, clearly active */
+.fh-toggle.night{
+  background:linear-gradient(180deg, rgba(15,27,42,.74), rgba(9,16,28,.8));
+  border-color:rgba(87,230,224,.6);
+  box-shadow:0 0 15px rgba(46,230,200,.45), 0 7px 15px -7px rgba(0,10,20,.7), inset 0 1px 1px rgba(150,240,235,.2);
+}
+.fh-toggle.night .fh-toggle-lbl{ color:#E1FCFF; text-shadow:0 0 9px rgba(87,230,224,.55); }
+@media (prefers-reduced-motion: reduce){
+  .fh-toggle, .fh-toggle-track, .fh-toggle-knob{ transition:none; }
+}
+
+/* ---------- night avatar / Dr. CF ring glows (mode='flare') ---------- */
+.wb-night .avatar-btn > div{
+  border-color:rgba(160,220,255,.9) !important;
+  box-shadow:0 0 16px rgba(87,230,224,.5), 0 4px 12px -4px rgba(0,10,22,.6) !important;
+}
+.wb-night .avatar-btn .gear-badge{
+  background:linear-gradient(180deg,#57E6E0,#2E9FE0); color:#06202a;
+}
+.wb-night .drcf-home-img{
+  border-color:rgba(160,225,255,.85);
+  box-shadow:0 0 16px rgba(77,159,255,.5), 0 4px 14px -3px rgba(0,10,22,.6), 0 0 0 3px rgba(87,230,224,.3);
+}
+.wb-night .drcf-home-pulse{
+  background:linear-gradient(180deg,#57E6E0,#4D9FFF); border-color:rgba(9,20,34,.85);
+  box-shadow:0 0 9px rgba(87,230,224,.7);
+}
+.wb-night .drcf-home-label{ color:rgba(224,252,255,.92); text-shadow:0 0 8px rgba(87,230,224,.4); }
+.wb-night .wb-welcome{ color:rgba(200,224,255,.82) !important; }
+.wb-night .wb-name{ color:#EFFBFF !important; text-shadow:0 0 10px rgba(87,230,224,.35), 0 1px 6px rgba(4,10,24,.55) !important; }
+
+/* ---------- luminous night title + subtitle ---------- */
+.fh-htitle{
+  color:#EFFBFF !important;
+  text-shadow:0 0 14px rgba(87,230,224,.35), 0 1px 2px rgba(6,14,30,.5);
+}
+.fh-hsub{ color:#A9B4D0 !important; }
+
+/* wrapper that hosts the untouched refuge stack directly below the hero title.
+   -8px tucks it just under the title (the subtitle that used to sit here in
+   flare mode was removed, so the overlap is reduced by the subtitle's height). */
+.fh-below{ margin-top:-8px; }
+
+/* ===================================================================
+   NIGHT FOREST SCENE — layered SVG silhouettes + CSS glow blooms
+   =================================================================== */
+.fh-scene{
+  position:relative; width:100%; height:600px; overflow:hidden;
+  background:linear-gradient(180deg,#0B1026 0%,#181341 44%,#241843 100%);
+}
+.fh-sky, .fh-flora{ position:absolute; inset:0; width:100%; height:100%; display:block; }
+.fh-flora{ filter:drop-shadow(0 0 1px rgba(0,0,0,.4)); }
+
+/* luminous ground clusters (lit-from-within) */
+.fh-bloom{
+  position:absolute; width:var(--d,140px); height:var(--d,140px); border-radius:50%; pointer-events:none;
+  background:radial-gradient(circle, var(--c) 0%, transparent 66%);
+  filter:blur(5px); opacity:.85; mix-blend-mode:screen;
+  animation:fhBloom 9s ease-in-out infinite;
+}
+.fh-bloom:nth-child(2){ animation-duration:11s; animation-delay:-3s; }
+.fh-bloom:nth-child(3){ animation-duration:10s; animation-delay:-6s; }
+.fh-bloom:nth-child(4){ animation-duration:12s; animation-delay:-2s; }
+@keyframes fhBloom{ 0%,100%{ opacity:.7; transform:scale(.96); } 50%{ opacity:.92; transform:scale(1.05); } }
+
+/* bioluminescent specks */
+.fh-dots{ position:absolute; inset:0; pointer-events:none; }
+.fh-dot{
+  position:absolute; width:var(--s,3px); height:var(--s,3px); border-radius:50%;
+  transform:translate(-50%,-50%);
+  background:radial-gradient(circle at 45% 40%, #ffffff 0%, var(--c) 55%, rgba(255,255,255,0) 78%);
+  box-shadow:0 0 7px var(--c), 0 0 13px color-mix(in srgb, var(--c) 55%, transparent);
+  animation:fhDot var(--pdur,5s) var(--pd,0s) ease-in-out infinite;
+}
+@keyframes fhDot{ 0%,100%{ opacity:.45; transform:translate(-50%,-50%) scale(.85); } 50%{ opacity:1; transform:translate(-50%,-50%) scale(1.15); } }
+.fh-dots.still .fh-dot{ animation:none; opacity:.85; }
+@media (prefers-reduced-motion: reduce){ .fh-bloom{ animation:none; } .fh-dot{ animation:none; opacity:.85; } }
+
+/* ===================================================================
+   FOREST SPIRITS — glowing seed-spirit particles (Flare mode preset)
+   =================================================================== */
+.cf-spirits{ mix-blend-mode:normal; }
+.fh-spirit{
+  position:absolute; top:0; left:0; width:0; height:0; transform-origin:0 0;
+  will-change:transform; transform:translate(-80px,-80px);
+}
+.fh-spirit-in{ position:relative; transform:translate(-50%,-50%); }
+.fh-fils{
+  position:absolute; left:calc(var(--sz) * -0.7); top:calc(var(--sz) * -0.9);
+  width:calc(var(--sz) * 2.4); height:calc(var(--sz) * 3.6); overflow:visible;
+  transform-origin:calc(var(--sz) * 1.2) calc(var(--sz) * 1.4);
+  animation:fhFilSway calc(var(--pulse) * 1.9) var(--pd) ease-in-out infinite;
+}
+.fh-fils path{ fill:none; stroke:var(--hue,#BFF6FF); stroke-width:.9; stroke-linecap:round; opacity:.62; }
+.fh-fils .fh-stalk{ stroke-width:1.1; opacity:.82; }
+@keyframes fhFilSway{ 0%,100%{ transform:rotate(-4deg); } 50%{ transform:rotate(4deg); } }
+.fh-core{
+  display:block; width:var(--sz,12px); height:var(--sz,12px); border-radius:50%; position:relative; z-index:2;
+  background:radial-gradient(circle at 42% 38%, #ffffff 0%, var(--hue,#BFF6FF) 46%, rgba(255,255,255,0) 74%);
+  box-shadow:0 0 calc(var(--sz) * .9) var(--hue,#BFF6FF), 0 0 calc(var(--sz) * 1.9) color-mix(in srgb, var(--hue,#BFF6FF) 55%, transparent);
+  animation:fhPulse var(--pulse,4s) var(--pd,0s) ease-in-out infinite;
+}
+@keyframes fhPulse{ 0%,100%{ opacity:.72; transform:scale(.9); } 50%{ opacity:1; transform:scale(1.12); } }
+@media (prefers-reduced-motion: reduce){
+  .fh-fils{ animation:none; }
+  .fh-core{ animation:none; opacity:.9; }
+}
+
+/* wing-flap speed tracks velocity (var set per-frame by the engine) */
+.cf-flutter .bsvg .side{ animation-duration:var(--flap, .09s); }
+
+/* ===================================================================
+   NIGHT BUTTERFLIES — Flare mode: the SAME day butterflies (same art,
+   flight & count), recoloured white/cyan/blue/turquoise and lit from
+   within like the cypsela cores (matching glow + gentle pulse).
+   =================================================================== */
+.cf-night .bsvg{
+  filter:drop-shadow(0 0 3px var(--hue,#BFF6FF)) drop-shadow(0 0 8px color-mix(in srgb, var(--hue,#BFF6FF) 60%, transparent));
+}
+.cf-night .bsvg .fore,.cf-night .bsvg .hind{ stroke-width:1; }
+.cf-night .bsvg .bd ellipse,.cf-night .bsvg .bd circle{ fill:#EAFBFF; }
+.cf-night .bsvg .bd .ant{ stroke:#CFEFF6; }
+.cf-night .bfly-wings{ animation:fhBflyGlow 3.8s var(--gd,0s) ease-in-out infinite; }
+@keyframes fhBflyGlow{ 0%,100%{ opacity:.8; } 50%{ opacity:1; } }
+@media (prefers-reduced-motion: reduce){ .cf-night .bfly-wings{ animation:none; opacity:.92; } }
+
+/* ===================================================================
+   FLARE MODE — cool bioluminescent recolor of the refuge stack.
+   The Flare mode content below the hero shipped in a warm amber/sage/
+   terracotta palette; here it is remapped to the hero's cyan /
+   turquoise / electric-blue / violet / magenta world. This is a scoped
+   token + surface override (no locked component is edited): the
+   `--rf-*` tokens carry most of it, plus targeted overrides for the
+   few hardcoded warm gradients & glows. Scoped to `.rf-screen`, which
+   is present only while a flare home/journal is showing — so day Home
+   and the (intentionally warm) sunrise exit ritual are untouched.
+   =================================================================== */
+.rf-screen{
+  --rf-night-deep:#070C1E;
+  --rf-night:#0D1330;                 /* below-curve surface → deep indigo */
+  --rf-surface:#171F45;               /* cards */
+  --rf-raised:#212C58;                /* inner controls */
+  --rf-hairline:rgba(120,185,235,.17);
+  --rf-sage:#2EE6C8;                  /* primary accent → turquoise */
+  --rf-sage-tint:rgba(46,230,200,.14);
+  --rf-amber:#57E6E0;                 /* warm accent → cyan */
+  --rf-amber-tint:rgba(87,230,224,.14);
+  --rf-flare:#9D7BFF;                 /* violet (already in-palette) */
+  --rf-flare-tint:rgba(157,123,255,.17);
+  --rf-terra:#F472C0;                 /* safety accent → magenta */
+  --rf-terra-surface:#2A1740;
+  --rf-terra-text:#FBD6EF;
+  --rf-text:#EAF2FF;
+  --rf-text-soft:#C3D2EE;
+  --rf-text-muted:#8EA0C6;
+  --rf-ink:#05121F;                   /* text on the bright cyan CTA */
+}
+
+/* ambient "lamp" glow at the top of the room → cool moonlight */
+.rf-screen .rf-dash::before,
+.rf-screen .rfc-screen::before{
+  background:radial-gradient(circle, rgba(87,230,224,.13) 0%, rgba(87,230,224,.035) 45%, transparent 68%) !important;
+}
+
+/* flare-type "with you" hero card */
+.rf-screen .rf-flaretype-hero{
+  background:linear-gradient(150deg, rgba(46,230,200,.16), var(--rf-surface) 72%);
+  border-color:rgba(87,230,224,.34);
+}
+.rf-screen .rf-fth-icn{ border-color:rgba(87,230,224,.32); }
+.rf-screen .rf-fth-change{ border-color:rgba(87,230,224,.3); }
+
+/* quick-log tiles — cool neumorphic depth */
+.rf-screen .rf-quick .rf-q{
+  background:linear-gradient(180deg,#1c2750 0%,#121a3a 100%);
+  box-shadow:0 6px 13px rgba(0,0,0,.42),inset 0 1.5px 1px rgba(150,205,255,.08),inset 0 -4px 8px rgba(0,0,0,.36);
+}
+.rf-screen .rf-quick .rf-q.flash{
+  box-shadow:0 6px 15px rgba(46,230,200,.32),inset 0 1.5px 1px rgba(150,220,255,.1);
+}
+
+/* primary + ghost CTAs — cool base shadow (base fill comes from --rf-sage) */
+.rf-screen .rf-cta{ box-shadow:0 7px 15px rgba(10,44,64,.5),inset 0 2px 2px rgba(205,246,255,.42),inset 0 -4px 7px rgba(18,92,112,.5); }
+.rf-screen .rf-cta:active{ box-shadow:0 3px 7px rgba(10,44,64,.5),inset 0 2px 5px rgba(18,92,112,.55); }
+.rf-screen .rf-cta.ghost{
+  background:linear-gradient(180deg,#20305c,#161f48);
+  box-shadow:0 5px 11px rgba(0,0,0,.4),inset 0 1.5px 1px rgba(150,205,255,.07),inset 0 -3px 6px rgba(0,0,0,.35);
+}
+.rf-screen .rf-cta:focus-visible{ outline-color:#57E6E0; }
+
+/* module gradients (message-for-a-hard-day, gentle-kitchen "mine") */
+.rf-screen .rf-msg{ background:linear-gradient(160deg,#1e2450 0%,#141b3a 70%); }
+.rf-screen .rfk-mine{ background:linear-gradient(160deg,#1e2450 0%,var(--rf-surface) 70%); border-color:rgba(87,230,224,.3); }
+.rf-screen .rfk-chip,
+.rf-screen .rfk-addmeal{ border-color:rgba(87,230,224,.4); }
+
+/* safety card border/subtext (terra hardcoded) → magenta */
+.rf-screen .rf-safety{ border-color:rgba(244,114,192,.34); box-shadow:0 6px 14px rgba(40,12,44,.34),inset 0 1.5px 1px rgba(255,255,255,.05),inset 0 -3px 7px rgba(24,8,30,.3); }
+.rf-screen .rf-safety .rf-st2{ color:rgba(252,214,239,.78); }
+.rf-screen .rfsafe-room{ background:#191233; }
+.rf-screen .rfsafe-hero p{ color:rgba(252,214,239,.8); }
+.rf-screen .rfsafe-flag{ background:rgba(244,114,192,.1); border-color:rgba(244,114,192,.28); }
+
+/* switch knob glow inside sheets */
+.rf-screen .rf-switch.on .rf-knob{ box-shadow:0 0 10px rgba(46,230,200,.5); }
+
+/* radar flare-band card */
+.rf-screen .rfb-card{ background:#0C1230; border-color:rgba(120,185,235,.14); color:#D6E4FF; }
+.rf-screen .rfb-band{ background:linear-gradient(180deg, rgba(87,230,224,.4), rgba(87,230,224,.18)); border-color:rgba(87,230,224,.35); }
+
+/* breathing orb + ring (comfort room) */
+.rf-screen .rfx-ring{ background:radial-gradient(circle, rgba(46,230,200,.16) 0%, transparent 70%); }
+.rf-screen .rfx-orb{
+  background:radial-gradient(circle at 34% 30%, rgba(87,230,224,.5), rgba(46,230,200,.28) 62%, rgba(46,230,200,.14));
+  box-shadow:0 0 40px rgba(87,230,224,.18), inset 0 0 24px rgba(46,230,200,.16);
+}
+.rf-screen .rfx-msgbox{ border-color:rgba(87,230,224,.3); }
+
+/* "living lights" warm dots → cyan (dashboard preview + full sky) */
+.rf-screen .rf-star.warm,
+.rf-screen .rf-star.you,
+.rf-screen .rfl-star.warm,
+.rf-screen .rfl-you,
+.rf-screen .rfl-named-dot{ background:#57E6E0 !important; box-shadow:0 0 10px rgba(87,230,224,.82) !important; }
+.rf-screen .rf-star.you::after,
+.rf-screen .rfl-you::after,
+.rf-screen .rfl-named-dot::after{ background:radial-gradient(circle, rgba(87,230,224,.4), transparent 70%) !important; }
+.rf-screen .rfl-sky{
+  background:
+    radial-gradient(140% 90% at 50% 112%, rgba(87,230,224,.16) 0%, transparent 55%),
+    radial-gradient(120% 120% at 50% -18%, #0C1330 0%, #070C1E 60%);
+}
+.rf-screen .rfl-pulse{ background:radial-gradient(circle, rgba(87,230,224,.85), transparent 70%); }
+.rf-screen .rflp-halo{ background:radial-gradient(circle, rgba(87,230,224,.3), transparent 66%); }
+.rf-screen .rflp-photo{ border-color:rgba(87,230,224,.55); box-shadow:0 0 22px rgba(87,230,224,.35); }
+.rf-screen .rflp-status{ border-color:rgba(87,230,224,.3); }
+
+/* one-time gentle notices / day-1 message reveal (warm card → cool) */
+.rf-screen .rf2-softicn{ border-color:rgba(87,230,224,.35); }
+.rf-screen .rfm-card{ background:linear-gradient(165deg,#1e2450 0%,#141b3a 75%); border-color:rgba(87,230,224,.35); }
+.rf-screen .rfm-seal{ border-color:rgba(87,230,224,.4); }

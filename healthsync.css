@@ -1,0 +1,54 @@
+/* ===================================================================
+   HEALTH SYNC — additive styles only. New classes, no overrides of
+   any existing rule.
+   • .rf-hs*   — the one additive Flare Mode card, in the refuge's
+                 existing warm-dark tokens (flaremode.css variables).
+                 Calm, low-stimulation: no bright colors, no motion.
+   • .hsn-*    — the same card on the day-theme Home.
+   The app never draws a permission surface of its own: the OS does.
+   =================================================================== */
+
+/* ---------- Flare Mode: rest & movement card ---------- */
+.rf-hs-head{display:flex;align-items:center;gap:9px;}
+.rf-hs-hic{display:flex;flex:none;color:var(--rf-sage);}
+.rf-hs-src{
+  display:flex;align-items:center;gap:4px;flex:none;
+  font-size:10px;font-weight:600;color:var(--rf-text-muted);letter-spacing:.02em;
+}
+.rf-hs-rows{display:flex;flex-direction:column;gap:16px;}
+.rf-hs-row{display:flex;flex-direction:column;gap:9px;}
+.rf-hs-l{display:flex;align-items:baseline;gap:8px;}
+.rf-hs-k{font-size:15px;font-weight:700;color:var(--rf-text);flex:1;}
+.rf-hs-v{
+  font-size:16px;font-weight:800;color:var(--rf-text);font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.rf-hs-v i{font-style:normal;font-size:13.5px;font-weight:500;color:var(--rf-text-muted);}
+.rf-hs-bar{position:relative;display:block;height:6px;border-radius:4px;background:var(--rf-raised);}
+.rf-hs-fill{position:absolute;top:0;inset-inline-start:0;height:100%;border-radius:4px;background:rgba(143,191,156,.55);}
+.rf-hs-tick{position:absolute;top:-3px;width:2px;height:12px;border-radius:2px;background:rgba(184,206,181,.55);margin-inline-start:-1px;}
+.rf-hs-note{
+  margin-top:13px;padding:11px 13px;border-radius:14px;
+  background:var(--rf-amber-tint);color:var(--rf-amber);
+  font-size:12.5px;font-weight:500;line-height:1.6;
+}
+.rf-hs-foot{font-size:10.5px;font-weight:500;color:var(--rf-text-muted);margin-top:9px;}
+
+/* ---------- Normal Home: "Today, gently" card ---------- */
+/* Same structure as the Flare card, re-skinned on the day-theme tokens so it
+   sits with the other white home cards. Logical props keep RTL mirroring. */
+.hsn-card{margin:14px 0 0;padding:16px 16px 15px;}
+.hsn-head{display:flex;align-items:center;gap:9px;}
+.hsn-hic{width:30px;height:30px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--mint-100);color:var(--green-600);}
+.hsn-t{font-size:14px;font-weight:800;color:var(--ink);}
+.hsn-src{display:flex;align-items:center;gap:4px;flex:none;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.02em;}
+.hsn-rows{display:flex;flex-direction:column;gap:16px;}
+.hsn-row{display:flex;flex-direction:column;gap:9px;}
+.hsn-l{display:flex;align-items:baseline;gap:8px;}
+.hsn-k{font-size:15px;font-weight:700;color:var(--ink);flex:1;}
+.hsn-v{font-size:16px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;}
+.hsn-v i{font-style:normal;font-size:13.5px;font-weight:600;color:var(--muted);}
+.hsn-bar{position:relative;display:block;height:6px;border-radius:4px;background:var(--card-soft);}
+.hsn-fill{position:absolute;top:0;inset-inline-start:0;height:100%;border-radius:4px;background:rgba(70,154,63,.5);}
+.hsn-tick{position:absolute;top:-3px;width:2px;height:12px;border-radius:2px;background:rgba(70,154,63,.55);margin-inline-start:-1px;}
+.hsn-note{margin-top:13px;padding:11px 13px;border-radius:14px;background:var(--mint-50);color:var(--ink-soft);font-size:12.5px;font-weight:600;line-height:1.6;}
+.hsn-foot{font-size:10.5px;font-weight:600;color:var(--muted);margin-top:9px;}

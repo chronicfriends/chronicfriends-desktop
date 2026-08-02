@@ -1,0 +1,156 @@
+/* ===================================================================
+   NORMAL MODE — COMFORT TOOLKIT ("small rituals" room)
+   Deep cosmic-dusk space, distinct from Flare Mode's warm night.
+   All interactive stages use pointer events + touch-action:none so
+   they work identically on Android / iOS / desktop.
+   =================================================================== */
+.nc-veil{position:absolute;inset:0;border-radius:42px;overflow:hidden;z-index:150;
+  background:radial-gradient(130% 95% at 50% 0%,#1c1442 0%,#120d30 52%,#08061a 100%);
+  color:#f2ecff;display:flex;flex-direction:column;animation:ncVeilIn .38s cubic-bezier(.22,1,.36,1);}
+@keyframes ncVeilIn{from{opacity:0;transform:translateY(22px);}to{opacity:1;transform:none;}}
+.nc-veil *{-webkit-tap-highlight-color:transparent;}
+
+/* starfield backdrop (pure CSS, ultra cheap) */
+.nc-stars{position:absolute;inset:0;pointer-events:none;opacity:.8;
+  background-image:radial-gradient(1.2px 1.2px at 12% 18%,rgba(255,255,255,.7),transparent 60%),
+    radial-gradient(1px 1px at 78% 9%,rgba(255,255,255,.55),transparent 60%),
+    radial-gradient(1.4px 1.4px at 55% 30%,rgba(190,210,255,.5),transparent 60%),
+    radial-gradient(1px 1px at 30% 52%,rgba(255,255,255,.35),transparent 60%),
+    radial-gradient(1.2px 1.2px at 88% 44%,rgba(255,220,250,.4),transparent 60%),
+    radial-gradient(1px 1px at 8% 78%,rgba(255,255,255,.3),transparent 60%),
+    radial-gradient(1.3px 1.3px at 66% 84%,rgba(200,255,240,.35),transparent 60%);}
+@media (prefers-reduced-motion: no-preference){
+  .nc-stars{animation:ncStarBreath 9s ease-in-out infinite alternate;}
+  @keyframes ncStarBreath{from{opacity:.55;}to{opacity:.95;}}
+}
+
+/* header */
+.nc-head{position:relative;z-index:2;display:flex;align-items:center;gap:10px;
+  padding:calc(14px + env(safe-area-inset-top)) 16px 10px;flex:none;}
+.nc-back{width:40px;height:40px;border-radius:14px;border:none;cursor:pointer;flex:none;
+  display:flex;align-items:center;justify-content:center;color:#e9e2ff;font-family:inherit;
+  background:rgba(255,255,255,.09);box-shadow:inset 0 0 0 1px rgba(255,255,255,.13);}
+.nc-back:active{transform:scale(.93);}
+.nc-head-t{flex:1;min-width:0;}
+.nc-head-t b{display:block;font-size:17px;font-weight:800;letter-spacing:-.01em;}
+.nc-head-t span{display:block;font-size:11.5px;font-weight:600;color:#a79ac8;margin-top:1px;}
+
+/* scroll body */
+.nc-body{position:relative;z-index:1;flex:1;overflow-y:auto;overscroll-behavior:contain;
+  padding:4px 16px calc(26px + env(safe-area-inset-bottom));scrollbar-width:none;}
+.nc-body::-webkit-scrollbar{display:none;}
+.nc-intro{font-size:13px;line-height:1.5;color:#c9bfe6;font-weight:600;margin:6px 2px 16px;}
+.nc-sec{font-size:11px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;
+  color:#8d7fb5;margin:18px 4px 10px;display:flex;align-items:center;gap:8px;}
+.nc-sec::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(150,130,200,.35),transparent);}
+
+/* menu cards */
+.nc-grid{display:grid;grid-template-columns:1fr;gap:10px;}
+.nc-card{display:flex;align-items:center;gap:13px;text-align:start;cursor:pointer;border:none;
+  font-family:inherit;color:inherit;padding:13px 14px;border-radius:20px;position:relative;overflow:hidden;
+  background:linear-gradient(140deg,rgba(255,255,255,.085),rgba(255,255,255,.035));
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.11),0 10px 26px -18px rgba(0,0,0,.8);}
+.nc-card:active{transform:scale(.98);}
+.nc-card .nc-glow{position:absolute;inset-inline-start:-30px;top:-40px;width:120px;height:120px;border-radius:50%;
+  background:var(--acc,#8f7bff);opacity:.16;filter:blur(30px);pointer-events:none;}
+.nc-orb{width:46px;height:46px;border-radius:17px;flex:none;display:flex;align-items:center;justify-content:center;
+  color:#fff;background:var(--orb,radial-gradient(120% 120% at 30% 25%,#a48bff,#5b3fd6));
+  box-shadow:0 8px 18px -8px rgba(0,0,0,.7),inset 0 0 0 1px rgba(255,255,255,.22);}
+.nc-cname{font-size:14.5px;font-weight:800;letter-spacing:-.01em;}
+.nc-ctag{font-size:11.5px;font-weight:600;color:#b3a7d6;line-height:1.35;margin-top:2px;}
+.nc-chev{color:#8d7fb5;flex:none;display:flex;}
+
+/* experience stage */
+.nc-stage{position:relative;border-radius:24px;overflow:hidden;margin:2px 0 14px;
+  background:radial-gradient(120% 100% at 50% 0%,#221a52,#0d0926 70%);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1),0 18px 40px -24px rgba(0,0,0,.9);}
+.nc-stage canvas{display:block;width:100%;touch-action:none;user-select:none;-webkit-user-select:none;}
+.nc-stage-hint{position:absolute;inset-inline:0;bottom:10px;text-align:center;font-size:11.5px;
+  font-weight:700;color:rgba(235,228,255,.75);pointer-events:none;text-shadow:0 1px 8px rgba(0,0,0,.6);
+  padding:0 18px;}
+.nc-float-msg{position:absolute;inset-inline:0;top:16px;text-align:center;font-size:13px;font-weight:800;
+  color:#fff;pointer-events:none;text-shadow:0 2px 14px rgba(0,0,0,.65);padding:0 18px;
+  animation:ncMsgIn .5s ease both;}
+@keyframes ncMsgIn{from{opacity:0;transform:translateY(-6px);}to{opacity:1;transform:none;}}
+
+/* buttons & fields */
+.nc-cta{width:100%;height:52px;border-radius:18px;border:none;cursor:pointer;font-family:inherit;
+  font-size:15px;font-weight:800;color:#fff;letter-spacing:-.01em;
+  background:linear-gradient(140deg,var(--acc,#8f7bff),color-mix(in oklab,var(--acc,#8f7bff) 60%,#3c2b9a));
+  box-shadow:0 12px 26px -12px color-mix(in oklab,var(--acc,#8f7bff) 70%,transparent),inset 0 0 0 1px rgba(255,255,255,.2);}
+.nc-cta:disabled{opacity:.45;}
+.nc-cta:active{transform:scale(.98);}
+.nc-cta.ghost{background:rgba(255,255,255,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);color:#e9e2ff;}
+.nc-row{display:flex;gap:10px;}
+.nc-row>*{flex:1;}
+.nc-input{width:100%;border:none;border-radius:16px;padding:14px 15px;font-family:inherit;font-size:16px;
+  font-weight:600;color:#f2ecff;background:rgba(255,255,255,.08);outline:none;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);}
+.nc-input::placeholder{color:#8d7fb5;font-weight:600;}
+.nc-note{font-size:11.5px;line-height:1.5;color:#9d90c2;font-weight:600;margin:10px 2px 0;text-align:center;}
+
+/* pills / chips */
+.nc-pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.nc-pill{border:none;cursor:pointer;font-family:inherit;padding:9px 14px;border-radius:15px;font-size:12.5px;
+  font-weight:800;color:#cfc4ef;background:rgba(255,255,255,.07);box-shadow:inset 0 0 0 1px rgba(255,255,255,.13);}
+.nc-pill.sel{color:#fff;background:linear-gradient(140deg,var(--acc,#8f7bff),color-mix(in oklab,var(--acc,#8f7bff) 55%,#2d2270));
+  box-shadow:0 8px 18px -10px var(--acc,#8f7bff),inset 0 0 0 1px rgba(255,255,255,.24);}
+
+/* meter (Earth Pulse coherence, chakra charge…) */
+.nc-meter{height:10px;border-radius:6px;background:rgba(255,255,255,.09);overflow:hidden;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
+.nc-meter>i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,#61e8c8,#8f7bff,#ff8fd6);
+  transition:width .35s ease;}
+
+/* garden shelf / constellation list */
+.nc-shelf{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px;}
+.nc-shelf-item{width:52px;height:64px;border-radius:14px;background:rgba(255,255,255,.06);flex:none;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);display:flex;align-items:flex-end;justify-content:center;overflow:hidden;}
+.nc-listrow{display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:16px;margin-top:8px;
+  background:rgba(255,255,255,.055);box-shadow:inset 0 0 0 1px rgba(255,255,255,.1);}
+.nc-listrow .txt{flex:1;min-width:0;font-size:13px;font-weight:700;line-height:1.35;overflow:hidden;text-overflow:ellipsis;}
+.nc-listrow .sub{display:block;font-size:10.5px;color:#9d90c2;font-weight:700;margin-top:1px;}
+.nc-star-btn{border:none;cursor:pointer;font-family:inherit;width:38px;height:38px;border-radius:13px;flex:none;
+  display:flex;align-items:center;justify-content:center;color:#8d7fb5;background:rgba(255,255,255,.07);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.12);}
+.nc-star-btn.gold{color:#ffd76a;background:rgba(255,196,60,.14);box-shadow:inset 0 0 0 1px rgba(255,205,90,.4);}
+
+/* phase / phrase text that fades in & out (Portal 963) */
+.nc-phrase{position:absolute;inset-inline:0;top:44%;text-align:center;padding:0 26px;pointer-events:none;
+  font-size:16.5px;font-weight:800;letter-spacing:.01em;color:#fff;text-shadow:0 2px 22px rgba(140,110,255,.8);}
+@media (prefers-reduced-motion: no-preference){
+  .nc-phrase{animation:ncPhrase 8s ease-in-out infinite;}
+  @keyframes ncPhrase{0%,12%{opacity:0;transform:translateY(6px);}25%,72%{opacity:1;transform:none;}88%,100%{opacity:0;transform:translateY(-6px);}}
+}
+
+/* chakra column */
+.nc-chakra-col{display:flex;flex-direction:column-reverse;align-items:center;gap:13px;padding:18px 0 10px;}
+.nc-chakra{width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;position:relative;flex:none;
+  background:radial-gradient(120% 120% at 32% 28%,color-mix(in oklab,var(--c) 70%,#fff),var(--c) 58%,color-mix(in oklab,var(--c) 55%,#000));
+  box-shadow:0 0 0 1px rgba(255,255,255,.18) inset,0 0 var(--gl,10px) var(--c);}
+.nc-chakra:active{transform:scale(.94);}
+@media (prefers-reduced-motion: no-preference){
+  .nc-chakra.humming{animation:ncHum 1.1s ease-in-out infinite;}
+  @keyframes ncHum{0%,100%{transform:scale(1);}50%{transform:scale(1.12);}}
+}
+.nc-chakra .ring{position:absolute;inset:-7px;border-radius:50%;pointer-events:none;}
+.nc-chakra.full{box-shadow:0 0 0 1px rgba(255,255,255,.35) inset,0 0 26px var(--c);}
+
+/* sound-bath bubbles */
+.nc-bubble{position:absolute;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:#fff;font-weight:800;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none;
+  background:radial-gradient(120% 120% at 32% 26%,color-mix(in oklab,var(--c) 55%,#fff) 0%,var(--c) 55%,color-mix(in oklab,var(--c) 45%,#000));
+  box-shadow:0 14px 30px -14px var(--c),inset 0 0 0 1.5px rgba(255,255,255,.3);transition:box-shadow .3s;}
+.nc-bubble small{font-size:9.5px;font-weight:800;opacity:.85;letter-spacing:.06em;text-transform:uppercase;}
+.nc-bubble b{font-size:12.5px;letter-spacing:-.01em;}
+
+/* home entry card lives on the light Home screen — lavender family */
+.nc-home-card{width:100%;display:flex;align-items:center;gap:13px;text-align:start;cursor:pointer;font-family:inherit;
+  padding:15px 16px;border:none;border-radius:24px;position:relative;
+  background:#e9e3fb;box-shadow:0 12px 30px -12px rgba(90,60,180,.30),inset 0 0 0 1.5px rgba(140,110,220,.28);}
+.nc-home-card:active{transform:scale(.985);}
+
+@media (prefers-reduced-motion: reduce){
+  .nc-veil{animation:none;}
+  .nc-float-msg{animation:none;}
+}
