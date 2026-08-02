@@ -62,6 +62,15 @@
       it: "Capito", pt: "Entendido", zh: "知道了", ja: "わかりました",
       ko: "알겠어요", hi: "ठीक है", id: "Mengerti", tr: "Anladım",
       ru: "Понятно", vi: "Đã hiểu", ar: "فهمت"
+    },
+    "Continue with the free plan": {
+      es: "Continuar con el plan gratis", ca: "Continua amb el pla gratuït",
+      fr: "Continuer avec l'offre gratuite", de: "Mit dem Gratis-Plan fortfahren",
+      it: "Continua con il piano gratuito", pt: "Continuar com o plano grátis",
+      zh: "继续使用免费版", ja: "無料プランで続ける", ko: "무료 플랜으로 계속하기",
+      hi: "मुफ़्त प्लान के साथ जारी रखें", id: "Lanjutkan dengan paket gratis",
+      tr: "Ücretsiz planla devam et", ru: "Продолжить с бесплатным планом",
+      vi: "Tiếp tục với gói miễn phí", ar: "المتابعة بالخطة المجانية"
     }
   };
 
@@ -103,11 +112,27 @@
     var body = document.createElement('div');
     body.textContent = wtr(PREMIUM_MSG);
     body.style.cssText = 'font-size:14.5px;line-height:1.55;opacity:.95;';
+    var close = function () { try { wrap.remove(); } catch (e) { wrap.parentNode && wrap.parentNode.removeChild(wrap); } };
+    card.appendChild(icon); card.appendChild(body);
+    /* Durante el ONBOARDING el paso de planes no tiene otra salida en web
+       (la única puerta era comprar) → botón para seguir con el plan gratis.
+       Bug encontrado por Gerhard en la prueba real (2 ago noche). */
+    var inOnboarding = false;
+    try { inOnboarding = localStorage.getItem('cf_onboarded_v1') !== '1' && !!(window.CFAuth && CFAuth.setOnboarded); } catch (e) {}
+    if (inOnboarding) {
+      var freeBtn = document.createElement('button');
+      freeBtn.textContent = wtr('Continue with the free plan');
+      freeBtn.style.cssText = 'display:block;margin:18px auto 0;padding:12px 26px;border:0;border-radius:999px;background:#3f9142;color:#fff;font-size:14px;font-weight:700;cursor:pointer;';
+      freeBtn.onclick = function () { close(); try { CFAuth.setOnboarded(true); } catch (e) {} };
+      card.appendChild(freeBtn);
+    }
     var btn = document.createElement('button');
     btn.textContent = wtr('Got it');
-    btn.style.cssText = 'margin-top:18px;padding:11px 26px;border:0;border-radius:999px;background:#3f9142;color:#fff;font-size:14px;font-weight:700;cursor:pointer;';
-    btn.onclick = function () { try { wrap.remove(); } catch (e) { wrap.parentNode && wrap.parentNode.removeChild(wrap); } };
-    card.appendChild(icon); card.appendChild(body); card.appendChild(btn);
+    btn.style.cssText = inOnboarding
+      ? 'display:block;margin:10px auto 0;padding:9px 22px;border:1px solid rgba(214,245,205,.35);border-radius:999px;background:transparent;color:#d6f5cd;font-size:13px;font-weight:600;cursor:pointer;'
+      : 'margin-top:18px;padding:11px 26px;border:0;border-radius:999px;background:#3f9142;color:#fff;font-size:14px;font-weight:700;cursor:pointer;';
+    btn.onclick = close;
+    card.appendChild(btn);
     wrap.appendChild(card);
     wrap.addEventListener('click', function (ev) { if (ev.target === wrap) btn.onclick(); });
     document.body.appendChild(wrap);
