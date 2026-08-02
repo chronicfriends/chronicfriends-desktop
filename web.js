@@ -144,12 +144,15 @@
       try { label = (typeof window.tr === 'function' ? window.tr('My medications') : 'My medications'); } catch (e) { label = 'My medications'; }
       if ((el.textContent || '').trim() !== String(label).trim()) continue;
       var host = el.parentNode;
-      if (!host || host.querySelector('.cf-web-alarm-note')) continue;
+      if (!host || !host.parentNode) continue;
+      if (document.querySelector('.cf-web-alarm-note')) continue;
       var note = document.createElement('div');
       note.className = 'cf-web-alarm-note';
       note.textContent = '💻 ' + wtr(ALARM_MSG);
-      note.style.cssText = 'margin:8px 0 12px;padding:10px 14px;border-radius:12px;background:rgba(214,245,205,.08);border:1px solid rgba(214,245,205,.16);color:#d6f5cd;font-size:12.5px;line-height:1.5;';
-      host.insertBefore(note, el.nextSibling);
+      /* banda de ancho completo ANTES de la sección (la pantalla de
+         medicaciones tiene fondo claro: texto verde oscuro legible) */
+      note.style.cssText = 'display:block;width:100%;box-sizing:border-box;margin:0 0 12px;padding:10px 14px;border-radius:12px;background:rgba(63,145,66,.12);border:1px solid rgba(63,145,66,.35);color:#1d4d20;font-size:13px;line-height:1.5;';
+      host.parentNode.insertBefore(note, host);
     }
   }
   try {
