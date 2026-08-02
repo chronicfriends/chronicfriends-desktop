@@ -63,6 +63,23 @@
       ko: "알겠어요", hi: "ठीक है", id: "Mengerti", tr: "Anladım",
       ru: "Понятно", vi: "Đã hiểu", ar: "فهمت"
     },
+    "Fill in your Journal carefully once. From then on, the blue button copies yesterday's entry into today with a single click. And if your routine follows the app's advice, every click means something bigger: you've built another good day. Building good days — that's Chronic Friends.": {
+      es: "Rellena bien tu Journal una sola vez. Desde entonces, el botón azul copia el registro de ayer en el día de hoy con un solo clic. Y si tu rutina sigue los consejos de la app, cada clic significa algo más grande: has construido otro buen día. Building good days — eso es Chronic Friends.",
+      ca: "Omple bé el teu Journal una sola vegada. Des de llavors, el botó blau copia el registre d'ahir al dia d'avui amb un sol clic. I si la teva rutina segueix els consells de l'app, cada clic significa una cosa més gran: has construït un altre bon dia. Building good days — això és Chronic Friends.",
+      fr: "Remplissez bien votre Journal une seule fois. Ensuite, le bouton bleu copie l'entrée d'hier dans la journée d'aujourd'hui en un seul clic. Et si votre routine suit les conseils de l'app, chaque clic veut dire quelque chose de plus grand : vous avez construit un autre bon jour. Building good days — c'est ça, Chronic Friends.",
+      de: "Fülle dein Journal einmal sorgfältig aus. Danach kopiert der blaue Button den gestrigen Eintrag mit einem Klick in den heutigen Tag. Und wenn deine Routine den Empfehlungen der App folgt, bedeutet jeder Klick etwas Größeres: Du hast wieder einen guten Tag gebaut. Building good days — das ist Chronic Friends.",
+      it: "Compila bene il tuo Journal una sola volta. Da lì in poi, il pulsante blu copia la registrazione di ieri nel giorno di oggi con un solo clic. E se la tua routine segue i consigli dell'app, ogni clic significa qualcosa di più grande: hai costruito un altro buon giorno. Building good days — questo è Chronic Friends.",
+      pt: "Preenche bem o teu Journal uma só vez. A partir daí, o botão azul copia o registo de ontem para o dia de hoje com um único clique. E se a tua rotina segue os conselhos da app, cada clique significa algo maior: construíste mais um bom dia. Building good days — isso é o Chronic Friends.",
+      zh: "认真填写一次日记（Journal）。之后，蓝色按钮只需一键就能把昨天的记录复制到今天。如果你的日常按照应用的建议来安排，每一次点击都意味着更重要的事：你又建成了美好的一天。Building good days —— 这就是 Chronic Friends。",
+      ja: "Journalを一度だけていねいに記入しましょう。その後は、青いボタンをワンクリックするだけで昨日の記録が今日にコピーされます。アプリのアドバイスに沿った習慣を続ければ、そのワンクリックはもっと大きな意味を持ちます。また一つ、良い一日を築けたということ。Building good days — それがChronic Friendsです。",
+      ko: "Journal을 한 번만 정성껏 작성하세요. 그다음부터는 파란 버튼 한 번의 클릭으로 어제의 기록이 오늘로 복사됩니다. 앱의 조언에 맞춰 루틴을 만들어 가면, 클릭 한 번은 더 큰 의미가 됩니다. 또 하나의 좋은 하루를 만들어냈다는 뜻이니까요. Building good days — 그것이 Chronic Friends입니다.",
+      hi: "अपना Journal एक बार अच्छी तरह भरें। उसके बाद, नीला बटन एक क्लिक में कल की एंट्री आज में कॉपी कर देता है। और अगर आपकी दिनचर्या ऐप की सलाह के अनुसार है, तो हर क्लिक का मतलब कुछ बड़ा है: आपने एक और अच्छा दिन बनाया है। Building good days — यही है Chronic Friends।",
+      id: "Isi Journal-mu dengan baik satu kali saja. Setelah itu, tombol biru menyalin catatan kemarin ke hari ini dengan sekali klik. Dan jika rutinitasmu mengikuti saran aplikasi, setiap klik berarti sesuatu yang lebih besar: kamu telah membangun satu hari baik lagi. Building good days — itulah Chronic Friends.",
+      tr: "Journal'ını bir kez özenle doldur. Sonrasında mavi buton, dünün kaydını tek tıkla bugüne kopyalar. Rutinin uygulamanın önerilerine uyuyorsa her tık daha büyük bir anlam taşır: bir iyi gün daha inşa ettin. Building good days — Chronic Friends budur.",
+      ru: "Заполните свой Journal внимательно один раз. Дальше синяя кнопка одним кликом копирует вчерашнюю запись в сегодняшний день. И если ваш распорядок следует советам приложения, каждый клик значит нечто большее: вы построили ещё один хороший день. Building good days — в этом весь Chronic Friends.",
+      vi: "Hãy điền Journal của bạn thật kỹ một lần. Từ đó, nút màu xanh sẽ sao chép bản ghi hôm qua sang hôm nay chỉ với một cú nhấp. Và nếu thói quen của bạn theo lời khuyên của ứng dụng, mỗi cú nhấp mang một ý nghĩa lớn hơn: bạn đã xây thêm một ngày tốt lành. Building good days — đó chính là Chronic Friends.",
+      ar: "املأ يومياتك (Journal) بعناية مرة واحدة. بعد ذلك، ينسخ الزر الأزرق تسجيل الأمس إلى اليوم بنقرة واحدة. وإذا كان روتينك يتبع نصائح التطبيق، فكل نقرة تعني شيئًا أكبر: لقد بنيت يومًا جيدًا آخر. Building good days — هذه هي Chronic Friends."
+    },
     "Continue with the free plan": {
       es: "Continuar con el plan gratis", ca: "Continua amb el pla gratuït",
       fr: "Continuer avec l'offre gratuite", de: "Mit dem Gratis-Plan fortfahren",
@@ -199,10 +216,58 @@
       if (el.childElementCount === 0 && (el.textContent || '').trim() === oldTxt.trim()) el.textContent = newTxt;
     }
   }
+  /* ---------- UX20 (versión web): explicar el botón azul de rutina ----- */
+  /* Idea de Gerhard (2 ago): el Journal se rellena bien UNA vez; después el
+     botón azul lo copia con un clic, y si la rutina sigue los consejos de
+     la app, cada clic = otro buen día construido (Building good days).
+     La tarjeta sale UNA sola vez, la primera vez que el usuario tiene el
+     banner azul delante. La versión definitiva irá en el onboarding de CD. */
+  var ROUTINE_TIP_KEY = 'cf_web_routine_tip_v1';
+  var ROUTINE_BODY = "Fill in your Journal carefully once. From then on, the blue button copies yesterday's entry into today with a single click. And if your routine follows the app's advice, every click means something bigger: you've built another good day. Building good days — that's Chronic Friends.";
+  function maybeShowRoutineTip() {
+    try { if (localStorage.getItem(ROUTINE_TIP_KEY) === '1') return; } catch (e) { return; }
+    if (document.getElementById('cf-web-routine-tip') || typeof window.tr !== 'function') return;
+    var t = tr('Same routine as yesterday?');
+    if (!t) return;
+    var els = document.querySelectorAll('div,span,p');
+    var found = false;
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      if (el.childElementCount === 0 && (el.textContent || '').indexOf(t) === 0 && el.getBoundingClientRect().height > 0) { found = true; break; }
+    }
+    if (!found) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'cf-web-routine-tip';
+    wrap.style.cssText = 'position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:24px;';
+    var card = document.createElement('div');
+    card.style.cssText = 'max-width:440px;width:100%;background:#1a241b;color:#eaf6e6;border:1px solid rgba(214,245,205,.18);border-radius:18px;padding:26px 24px;box-shadow:0 18px 50px rgba(0,0,0,.5);text-align:center;font-family:inherit;';
+    var icon = document.createElement('div');
+    icon.textContent = '✨';
+    icon.style.cssText = 'font-size:34px;margin-bottom:10px;';
+    var title = document.createElement('div');
+    title.textContent = tr('Same routine as yesterday?');
+    title.style.cssText = 'font-size:16px;font-weight:800;margin-bottom:8px;';
+    var body = document.createElement('div');
+    body.textContent = wtr(ROUTINE_BODY);
+    body.style.cssText = 'font-size:14px;line-height:1.6;opacity:.95;';
+    var btn = document.createElement('button');
+    btn.textContent = wtr('Got it');
+    btn.style.cssText = 'margin-top:18px;padding:11px 26px;border:0;border-radius:999px;background:#3f9142;color:#fff;font-size:14px;font-weight:700;cursor:pointer;';
+    var done = function () {
+      try { localStorage.setItem(ROUTINE_TIP_KEY, '1'); } catch (e) {}
+      try { wrap.remove(); } catch (e) { wrap.parentNode && wrap.parentNode.removeChild(wrap); }
+    };
+    btn.onclick = done;
+    card.appendChild(icon); card.appendChild(title); card.appendChild(body); card.appendChild(btn);
+    wrap.appendChild(card);
+    wrap.addEventListener('click', function (ev) { if (ev.target === wrap) done(); });
+    document.body.appendChild(wrap);
+  }
   try {
     new MutationObserver(function () {
       try { injectAlarmNote(); } catch (e) {}
       try { fixDonationCopy(); } catch (e) {}
+      try { maybeShowRoutineTip(); } catch (e) {}
     }).observe(document.documentElement, { childList: true, subtree: true });
   } catch (e) {}
 
