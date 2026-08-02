@@ -229,13 +229,23 @@
     if (document.getElementById('cf-web-routine-tip') || typeof window.tr !== 'function') return;
     var t = tr('Same routine as yesterday?');
     if (!t) return;
-    var els = document.querySelectorAll('div,span,p');
+    /* Dispara en CUALQUIERA de los dos momentos (el freno es el mismo):
+       a) nada más entrar en la app con el onboarding terminado — así forma
+          parte del onboarding, que es donde Gerhard la quiere (su cuenta
+          nueva no vio la tarjeta porque el banner azul aún no existía);
+       b) primera vez que el banner azul aparece en el Journal (respaldo). */
+    var onboarded = false, logged = false;
+    try { onboarded = localStorage.getItem('cf_onboarded_v1') === '1'; } catch (e) {}
+    try { logged = !!(window.CFAuth && CFAuth.data && CFAuth.data.email); } catch (e) {}
     var found = false;
-    for (var i = 0; i < els.length; i++) {
-      var el = els[i];
-      if (el.childElementCount === 0 && (el.textContent || '').indexOf(t) === 0 && el.getBoundingClientRect().height > 0) { found = true; break; }
+    if (!(onboarded && logged)) {
+      var els = document.querySelectorAll('div,span,p');
+      for (var i = 0; i < els.length; i++) {
+        var el = els[i];
+        if (el.childElementCount === 0 && (el.textContent || '').indexOf(t) === 0 && el.getBoundingClientRect().height > 0) { found = true; break; }
+      }
+      if (!found) return;
     }
-    if (!found) return;
     var wrap = document.createElement('div');
     wrap.id = 'cf-web-routine-tip';
     wrap.style.cssText = 'position:fixed;inset:0;z-index:99998;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);padding:24px;';
