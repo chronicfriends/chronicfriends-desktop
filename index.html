@@ -27,15 +27,147 @@
   .phone iframe{width:100%;height:100%;border:0;border-radius:38px;background:#0c160e;}
   .notch{position:absolute;top:22px;left:50%;transform:translateX(-50%);width:110px;height:26px;
          border-radius:14px;background:#03200f;z-index:2;}
+
+  /* ---- Instalar en el ordenador (8 ago 2026) --------------------------------
+     La landing (chronicfriends.org) solo puede ENLAZAR aquí: una PWA únicamente
+     se instala desde su propio dominio. Este es el botón que lo ofrece.
+     Se muestra solo si el navegador dice que puede instalarla (beforeinstallprompt)
+     o, si no dice nada, se degrada a un «cómo instalarla» con instrucciones.
+     Oculto en móvil (ahí la vía es la tienda) y si ya está instalada.        */
+  #cfInstallWrap{position:fixed;top:20px;right:20px;z-index:10;display:none;
+                 font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;}
+  #cfInstallBtn{display:inline-flex;align-items:center;gap:9px;padding:11px 18px;border:0;
+                border-radius:30px;cursor:pointer;font-size:14px;font-weight:700;color:#04240f;
+                font-family:inherit;background:linear-gradient(180deg,#7bd853 0%,#54b035 100%);
+                box-shadow:0 10px 24px rgba(0,0,0,.45), inset 0 2px 2px rgba(255,255,255,.45);
+                transition:transform .2s ease;}
+  #cfInstallBtn:hover{transform:translateY(-1px);}
+  #cfInstallBtn svg{flex:none;}
+  #cfHelp{display:none;margin-top:10px;max-width:320px;padding:16px 18px;border-radius:18px;
+          background:#ffffff;color:#21302a;font-size:13px;line-height:1.55;
+          box-shadow:0 20px 46px rgba(0,0,0,.5);}
+  #cfHelp p{margin:0 0 9px 0;}
+  #cfHelp p:last-child{margin:0;}
+  #cfHelp b{color:#1f6b2a;}
+  #cfHelpClose{margin-top:12px;border:0;background:none;padding:0;cursor:pointer;
+               font-family:inherit;font-size:12.5px;font-weight:700;color:#5a6f5d;}
+
   /* móvil o ventana estrecha: sin marco, app a pantalla completa */
   @media (max-width:760px){
     .phone{width:100vw;height:100vh;height:100dvh;aspect-ratio:auto;border-radius:0;padding:0;box-shadow:none;}
     .phone iframe{border-radius:0;}
     .notch{display:none;}
+    #cfInstallWrap{display:none !important;}
   }
+  /* ya instalada: la ventana propia no necesita ofrecer instalarla otra vez */
+  @media (display-mode:standalone){ #cfInstallWrap{display:none !important;} }
 </style>
 </head>
 <body>
+  <div id="cfInstallWrap">
+    <button id="cfInstallBtn" type="button">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg>
+      <span id="cfInstallLabel">Install on your computer</span>
+    </button>
+    <div id="cfHelp">
+      <p id="cfHelpChrome"><b>Chrome or Edge:</b> click the install icon in the address bar (a screen with a down arrow), then choose Install.</p>
+      <p id="cfHelpSafari"><b>Safari:</b> open the File menu and choose Add to Dock.</p>
+      <p id="cfHelpOther">If you don't see it, your browser may not support installing apps — Chronic Friends still works in this tab.</p>
+      <button id="cfHelpClose" type="button">Close</button>
+    </div>
+  </div>
+
   <div class="phone"><div class="notch"></div><iframe src="/app.html" allow="camera; microphone; fullscreen" title="Chronic Friends"></iframe></div>
+
+<script>
+(function () {
+  /* ---- textos (EN por defecto; ES e IT porque son los idiomas de lanzamiento).
+     El resto de idiomas caen en inglés a propósito: es un botón del envoltorio,
+     no de la app, que sí está en los 16.                                     */
+  var L = {
+    en: { install:'Install on your computer', how:'How to install it',
+          chrome:'<b>Chrome or Edge:</b> click the install icon in the address bar (a screen with a down arrow), then choose Install.',
+          safari:'<b>Safari:</b> open the File menu and choose Add to Dock.',
+          other:"If you don't see it, your browser may not support installing apps — Chronic Friends still works in this tab.",
+          close:'Close' },
+    es: { install:'Instalar en tu ordenador', how:'Cómo instalarla',
+          chrome:'<b>Chrome o Edge:</b> pulsa el icono de instalar en la barra de direcciones (una pantalla con una flecha hacia abajo) y elige Instalar.',
+          safari:'<b>Safari:</b> abre el menú Archivo y elige Añadir al Dock.',
+          other:'Si no lo ves, puede que tu navegador no permita instalar aplicaciones — Chronic Friends sigue funcionando en esta pestaña.',
+          close:'Cerrar' },
+    it: { install:'Installa sul computer', how:'Come installarla',
+          chrome:'<b>Chrome o Edge:</b> tocca l\'icona di installazione nella barra degli indirizzi (uno schermo con una freccia in giù) e scegli Installa.',
+          safari:'<b>Safari:</b> apri il menu File e scegli Aggiungi al Dock.',
+          other:'Se non la vedi, il tuo browser potrebbe non permettere di installare app — Chronic Friends funziona comunque in questa scheda.',
+          close:'Chiudi' }
+  };
+  var t = L[(navigator.language || 'en').slice(0, 2).toLowerCase()] || L.en;
+
+  var wrap  = document.getElementById('cfInstallWrap');
+  var btn   = document.getElementById('cfInstallBtn');
+  var label = document.getElementById('cfInstallLabel');
+  var help  = document.getElementById('cfHelp');
+
+  document.getElementById('cfHelpChrome').innerHTML = t.chrome;
+  document.getElementById('cfHelpSafari').innerHTML = t.safari;
+  document.getElementById('cfHelpOther').textContent = t.other;
+  document.getElementById('cfHelpClose').textContent = t.close;
+  label.textContent = t.install;
+
+  /* ya está instalada y abierta como app → no ofrecer nada */
+  function standalone() {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) ||
+           window.navigator.standalone === true;
+  }
+  if (standalone()) return;
+
+  var deferred = null;
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();          /* nos guardamos el aviso para nuestro botón */
+    deferred = e;
+    label.textContent = t.install;
+    help.style.display = 'none';
+    wrap.style.display = 'block';
+  });
+
+  btn.addEventListener('click', function () {
+    if (deferred) {
+      deferred.prompt();
+      deferred.userChoice.then(function (choice) {
+        if (choice && choice.outcome === 'accepted') { wrap.style.display = 'none'; }
+        deferred = null;
+      }).catch(function () {});
+    } else {
+      help.style.display = (help.style.display === 'block') ? 'none' : 'block';
+    }
+  });
+
+  document.getElementById('cfHelpClose').addEventListener('click', function () {
+    help.style.display = 'none';
+  });
+
+  window.addEventListener('appinstalled', function () { wrap.style.display = 'none'; });
+
+  /* Si a los 3 s el navegador no ha ofrecido nada (Safari, Firefox, o Chrome
+     que aún no la considera instalable), enseñamos el «cómo instalarla» en vez
+     de dejar la pantalla sin ninguna pista. */
+  setTimeout(function () {
+    if (!deferred && !standalone()) {
+      label.textContent = t.how;
+      wrap.style.display = 'block';
+    }
+  }, 3000);
+
+  /* Service worker también desde la página de nivel superior. web.js ya lo
+     registra, pero lo hace DENTRO del iframe: en la primera visita la página
+     de arriba se queda sin controlar y el navegador no ofrece instalarla. */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    });
+  }
+})();
+</script>
 </body>
 </html>

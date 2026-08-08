@@ -74,6 +74,50 @@
 
   var auth = firebase.auth();
 
+  /* ---- Idioma de los correos de Firebase (verificación y restablecer clave) ----
+     Sin esto, Firebase usa el idioma por defecto del proyecto (inglés) y alguien
+     que eligió español en la app recibía el correo en inglés. Basta con decirle
+     el idioma: Google envía SU plantilla ya traducida, no hay que escribir ni
+     mantener ninguna traducción.
+     VERIFICADO end-to-end el 5 ago 2026 en los 16 idiomas de la app (16/16, con
+     catalán y árabe incluidos), enviando de verdad y leyendo lo que llegó.
+     Orden de preferencia: idioma vivo de la app → el guardado → el del móvil. */
+  function applyLang() {
+    var l = '';
+    try { l = (window.I18n && window.I18n.lang) || ''; } catch (e) {}
+    if (!l) { try { l = localStorage.getItem('cf_lang') || ''; } catch (e) {} }
+    if (!l) { try { l = String(navigator.language || '').slice(0, 2); } catch (e) {} }
+    try { if (l) auth.languageCode = l; } catch (e) {}
+    return l || 'en';
+  }
+
+  /* Nuestro propio envío del correo de verificación (Cloud Function en la UE).
+     Existe porque la plantilla de Firebase dejó de traducirse para siempre el
+     5 ago 2026 y además enseñaba la dirección de verificación entera. Desde el
+     servidor propio el correo sale en el idioma del usuario (16 + inglés de
+     respaldo) y con un botón en vez del enlace kilométrico.
+     Si esta llamada falla por lo que sea (sin red, función caída, despliegue a
+     medias), NO se deja al usuario sin poder registrarse: se cae al correo de
+     Firebase de toda la vida, que llega en inglés pero llega. */
+  var CF_MAIL_URL = 'https://europe-west1-chronic-friends.cloudfunctions.net/enviarVerificacion';
+
+  function correoPropio(u, lang) {
+    if (typeof fetch !== 'function') return Promise.reject(new Error('sin-fetch'));
+    return u.getIdToken().then(function (tok) {
+      return fetch(CF_MAIL_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
+        body: JSON.stringify({ lang: lang })
+      });
+    }).then(function (r) {
+      if (!r.ok) throw new Error('http-' + r.status);
+      return r.json();
+    }).then(function (j) {
+      if (!j || !j.ok) throw new Error((j && j.code) || 'respuesta-no-ok');
+      return j;
+    });
+  }
+
   /* Persistencia LOCAL (sobrevive a recargas). En WKWebView desde file://
      IndexedDB puede no estar; si falla, caemos a sesión en memoria sin romper. */
   var ready = Promise.resolve()
@@ -99,8 +143,14 @@
     /* manda el correo de verificación con el ENLACE al usuario actual */
     sendVerification: function () {
       var u = auth.currentUser;
+      var lang = applyLang();   /* el correo sale en el idioma del usuario */
       if (!u) return Promise.resolve({ ok: false, code: 'no-current-user' });
-      return u.sendEmailVerification().then(function () { return ok(); }).catch(fail);
+      return correoPropio(u, lang)
+        .then(function (j) { return ok({ via: 'propio', lang: j.lang || lang }); })
+        .catch(function (e) {
+          try { console.warn('[CFFirebase] correo propio no disponible, uso el de Firebase:', e && e.message); } catch (_) {}
+          return u.sendEmailVerification().then(function () { return ok({ via: 'firebase' }); }).catch(fail);
+        });
     },
 
     /* inicia sesión con email + contraseña */
@@ -159,6 +209,7 @@
 
     /* email de restablecimiento de contraseña (para el 'Forgot password?' real) */
     sendPasswordReset: function (email) {
+      applyLang();   /* mismo criterio que la verificación: correo en su idioma */
       return auth.sendPasswordResetEmail(String(email || '').trim()).then(function () { return ok(); }).catch(fail);
     },
 
