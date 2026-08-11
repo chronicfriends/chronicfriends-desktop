@@ -26,7 +26,7 @@
 
 /* header */
 .nc-head{position:relative;z-index:2;display:flex;align-items:center;gap:10px;
-  padding:calc(14px + env(safe-area-inset-top)) 16px 10px;flex:none;}
+  padding:50px 16px 10px;flex:none;}
 .nc-back{width:40px;height:40px;border-radius:14px;border:none;cursor:pointer;flex:none;
   display:flex;align-items:center;justify-content:center;color:#e9e2ff;font-family:inherit;
   background:rgba(255,255,255,.09);box-shadow:inset 0 0 0 1px rgba(255,255,255,.13);}
