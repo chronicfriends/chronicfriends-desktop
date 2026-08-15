@@ -22,6 +22,16 @@
         notification UI — the existing cfEnableNotifications() opt-in
         (AlarmSetupCard / Settings) is wrapped, never called cold.
 
+   NH1 — "Will your reminders reach you?" (notifhealth.jsx). This glue
+   only carries the messages; it never schedules or cancels anything:
+     {t:'med:health:check'}                   read the delivery state
+     {t:'med:exact:request'}                  open the OS exact-alarms screen
+     {t:'med:battery:request'}                open the app's battery settings
+     {t:'med:settings:open'}                  open the app's notification settings
+     {t:'med:test', mode:'1min'|'15min'}      one test reminder
+   All five fire ONLY from a tap on that screen — never on open, never
+   automatically.
+
    Native → web  (shell injects window.CFMeds._recv(payload)):
      {t:'med:resolved', items:[{logId, medId, action:'taken'|'skipped',
         respondedAtISO, snoozeCount, source:'notification'}]}
@@ -33,6 +43,13 @@
         journal / radar refresh in the same render cycle, no reload.
      {t:'med:perm', granted:bool} → reflected in the notification
         settings UI via the existing cf_notif_* stores + 'cf-notif'.
+     {t:'med:health', platform, osMajor, notif, exact, battery, channel,
+        scheduled, nextAt, vendor} → handed straight to
+        CFNotifHealth._recvHealth (notifhealth.jsx), read lazily off
+        window so load order never matters. Kept in memory only, and a
+        value we are not given is never painted.
+     {t:'med:test:scheduled', mode, atISO} → CFNotifHealth._recvTest,
+        so the screen can say the exact minute it will ring.
 
    logId IS the internal dose key 'YYYY-MM-DD|medId|HH:MM' — 1:1, no
    separate id namespace.
@@ -62,11 +79,12 @@ doses.push({logId,medId:m.id,name,dose,timeISO:new Date(when).toISOString(),/* M
    request up as it mounts. */function mbOfferJournal(){try{if(typeof window.CFJournalOffer==='function'){window.CFJournalOffer();return;}}catch(e){}window.__cfJournalOfferPending=true;}/* ---- the glue ---- *//* explicit per-dose cancel — mbHorizon only carries FUTURE doses, so a dose
    answered after its hour never changes the schedule signature and the
    notifications the phone already scheduled for it would still fire. */function mbCancel(logId){if(!logId)return;mbPost({t:'med:cancel',logId:String(logId)});}let mbLastSig=null;function mbSync(force){if(!mbPresent())return;// plain browser: silent no-op
-const h=mbHorizon();const sig=h?JSON.stringify(h):'CLEAR';if(!force&&sig===mbLastSig)return;mbLastSig=sig;if(h)mbPost({t:'med:schedule',doses:h});else mbPost({t:'med:clear'});}const CFMeds={present:mbPresent,/* opt-in from the app's own notification UI — never called cold */requestPermission(){mbPost({t:'med:perm:request'});},/* full re-send, e.g. after the native side restarts */resend(){mbSync(true);},/* called by cfDoseResolve (medstate.jsx) on every taken/skipped write */cancelDose(logId){mbCancel(logId);},_recv(payload){try{const p=typeof payload==='string'?JSON.parse(payload):payload;if(!p||!p.t)return;if(p.t==='med:resolved'){let tookAny=false;(p.items||[]).forEach(it=>{if(!it||!it.logId)return;const action=it.action==='taken'?'taken':it.action==='skipped'?'skipped':null;if(!action)return;// only resolutions apply — a snooze can never overwrite
+const h=mbHorizon();const sig=h?JSON.stringify(h):'CLEAR';if(!force&&sig===mbLastSig)return;mbLastSig=sig;if(h)mbPost({t:'med:schedule',doses:h});else mbPost({t:'med:clear'});}const CFMeds={present:mbPresent,/* opt-in from the app's own notification UI — never called cold */requestPermission(){mbPost({t:'med:perm:request'});},/* NH1 — the delivery-health screen. Reads and system-settings jumps
+     only: not one of these schedules, moves or cancels a reminder. */healthCheck(){mbPost({t:'med:health:check'});},requestExact(){mbPost({t:'med:exact:request'});},requestBattery(){mbPost({t:'med:battery:request'});},openSettings(){mbPost({t:'med:settings:open'});},sendTest(mode){mbPost({t:'med:test',mode:(mode==='15min'||mode==='now')?mode:'1min'});},/* full re-send, e.g. after the native side restarts */resend(){mbSync(true);},/* called by cfDoseResolve (medstate.jsx) on every taken/skipped write */cancelDose(logId){mbCancel(logId);},_recv(payload){try{const p=typeof payload==='string'?JSON.parse(payload):payload;if(!p||!p.t)return;if(p.t==='med:resolved'){let tookAny=false;(p.items||[]).forEach(it=>{if(!it||!it.logId)return;const action=it.action==='taken'?'taken':it.action==='skipped'?'skipped':null;if(!action)return;// only resolutions apply — a snooze can never overwrite
 const prevResolved=window.cfDoseIsResolved&&cfDoseIsResolved(mbRead('cf_taken_v2',{})[it.logId]);const at=Date.parse(it.respondedAtISO||'')||Date.now();const rec=window.cfDoseResolve?cfDoseResolve(it.logId,action,it.source==='notification'?'notification':'app',{keepEarlier:true,at,snz:Number(it.snoozeCount)||0}):null;if(rec&&!prevResolved)mbApplyStock(it.logId.split('|')[1],it.logId.split('|')[0],action);if(rec&&action==='taken'&&it.logId.split('|')[0]===mbTodayKey())tookAny=true;});/* cfDoseResolve already broadcast 'cf-meds-external' (meds view,
            dose log, hero reload); charts/radar/journal read the store at
            render. Re-send the horizon minus the resolved doses: */try{window.dispatchEvent(new CustomEvent('cf-meds-external'));}catch(e){}mbSync(false);if(tookAny)mbOfferJournal();}else if(p.t==='med:perm'){try{if(p.granted){localStorage.setItem('cf_notif_pref_v1','1');localStorage.setItem('cf_notif_sim_v1','1');}else localStorage.removeItem('cf_notif_sim_v1');}catch(e){}try{window.dispatchEvent(new Event('cf-notif'));}catch(e){}// AlarmSetupCard / Settings re-read
-}}catch(e){}}};/* med:perm:request rides the EXISTING opt-in: wrap cfEnableNotifications
+}else if(p.t==='med:health'){try{if(window.CFNotifHealth)CFNotifHealth._recvHealth(p);}catch(e){}}else if(p.t==='med:test:scheduled'){try{if(window.CFNotifHealth)CFNotifHealth._recvTest(p);}catch(e){}}}catch(e){}}};/* med:perm:request rides the EXISTING opt-in: wrap cfEnableNotifications
    (defined in medalarm.js, loaded before this file) so the request only
    ever fires from the app's own calm notification UI. */(function mbHookPermUI(){const wrap=()=>{const orig=window.cfEnableNotifications;if(!orig||orig.__cfMedBridge)return!!orig;const w=function(){try{CFMeds.requestPermission();}catch(e){}return orig.apply(this,arguments);};w.__cfMedBridge=true;window.cfEnableNotifications=w;return true;};if(!wrap())setTimeout(wrap,0);})();/* install + announce + keep the horizon fresh */(function mbInit(){window.CFMeds=CFMeds;if(!mbPresent())return;// browser: engine untouched, glue dormant
 mbPost({t:'med:ready'});mbSync(true);window.addEventListener('cf-meds-external',()=>mbSync(false));setInterval(()=>mbSync(false),4000);// catches in-screen edits (state→storage writes)

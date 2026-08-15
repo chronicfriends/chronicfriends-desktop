@@ -1,8 +1,11 @@
 (function(){/* ===================================================================
-   FLARE MODE — FLARE PDF REPORT (Phase 5, premium)
+   FLARE MODE — FLARE PDF REPORT (Phase 5 · FREE for everyone)
    One-page doctor-ready template for a closed flare episode: period,
    logged symptoms overview, hydration, notes. Presented as a preview
-   sheet with a (premium-gated upstream) download action.
+   sheet whose download action is NEVER gated and carries NO Premium
+   chip — announcing a paid report and then letting it download is the
+   kind of inconsistency that costs review rejections
+   (founder, 26 Jul 2026 · reconfirmed 13 Aug 2026).
    Descriptive only — the report never scores or interprets.
    =================================================================== */const{useState:useRpState,useRef:useRpRef,useEffect:useRpEffect}=React;/* label maps mirror the flare-record catalogues (ids are stable) */const RP_SYM={diarrhea:'Diarrhea',blood:'Blood in stool',abpain:'Abdominal pain',nausea:'Nausea or vomiting',fatigue:'Deep fatigue',fever:'Fever',arthritis:'Joint pain (arthritis)',uveitis:'Eye inflammation (uveitis)',skin:'Skin issues (dermatitis)',mouth:'Mouth sores',weight:'Appetite / weight loss'};const RP_SEV={mild:'Gentle \u2014 I can go about my day',moderate:'Moderate \u2014 it slows me down',severe:'Severe \u2014 it stops my day'};const RP_HELPED={rest:'Rest',hydration:'Hydration',softdiet:'Soft / bland diet',meds:'My prescribed medication',warmth:'Warmth (heat pad)',breathing:'Breathing or meditation',talking:'Talking to someone',doctor:'My doctor\u2019s guidance',nature:'Nature',animals:'Animals',music:'Music',loved:'Loved ones',grounding:'Grounding',sun:'Sun exposure',freshair:'Fresh air'};const RP_CARE={none:'Not yet',messaged:'Messaged my doctor',consult:'Had a consultation',er:'Urgent care / ER'};function rpFmt(ts,opts){try{const loc=window.I18n&&I18n.locale?I18n.locale():'en-US';return new Date(ts).toLocaleDateString(loc,opts||{year:'numeric',month:'short',day:'numeric'});}catch(e){return'';}}/* per-day note lines within the episode */function rpNotes(entry){let log={};try{log=JSON.parse(localStorage.getItem('cf_flaremode_log_v1'))||{};}catch(e){}const from=Date.parse(cfDayKey(entry.startTs)+'T00:00:00Z');const out=[];Object.keys(log).sort().forEach(k=>{const t=new Date(k).getTime();if(t<from||t>entry.endTs)return;const d=log[k]||{};if(d.note&&d.note.txt)out.push({day:k,txt:d.note.txt});if(d.voice)out.push({day:k,voice:true});});return out;}/* ---- the paper itself, its own component (UX13-8) ----
    Rendered twice: in the preview sheet, and as a fresh `print` copy handed to

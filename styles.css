@@ -125,6 +125,12 @@ body{
   box-shadow:0 3px 7px rgba(58,140,45,.4),inset 0 2px 4px rgba(40,95,30,.4);}
 .btn3d.round{border-radius:50%;}
 .btn3d.pill{border-radius:30px;padding:13px 22px;}
+/* Button rows MUST be able to shrink: with the global zoom a narrow phone has
+   only ~300px of usable width, and a tight row (e.g. the comment composer's
+   send button) would otherwise push off-screen — invisible in the previewer,
+   fatal on a real 360px handset. Kept as its own rule so a merge can never
+   drop it; also set in the base .btn3d rule above. */
+.btn3d{min-width:0;}
 
 /* dark forest circular button */
 .btn3d.dark{
@@ -1247,7 +1253,7 @@ html[lang="ca"] .fr-title{font-size:15px;line-height:1.16;}
 .mfr-gauge-lab{font-size:20px;font-weight:800;letter-spacing:-.02em;line-height:1.05;}
 .mfr-gauge-sub{font-size:11px;font-weight:600;color:rgba(223,240,212,.6);margin-top:2px;}
 /* Flare Radar headline card — keep the ring, the risk label, and the 7-day
-   trend in their own space at 393px with the 1.3 device zoom. Localized
+   trend in their own space at 393px with the 1.2 device zoom. Localized
    labels (e.g. IT "RISCHIO DI RIACUTIZZAZIONE" / "ANDAMENTO A 7 GIORNI") are
    long: without this the single-line trend column widened and squeezed the
    risk text until it overlapped. Scoped to this one card only. */
@@ -1343,8 +1349,3 @@ html[lang="ca"] .fr-title{font-size:15px;line-height:1.16;}
   font-family:inherit;font-size:11.5px;font-weight:800;color:var(--muted);background:#fff;border-radius:14px;
   box-shadow:inset 0 0 0 1.5px rgba(120,140,115,.18);transition:box-shadow .12s,color .12s,background .12s;}
 .ft-seg-dot{width:10px;height:10px;border-radius:50%;}
-
-
-/* red de seguridad post-export: con el zoom global las filas de
-   botones justas de ancho deben poder encoger (device-only) */
-.btn3d{min-width:0;}
