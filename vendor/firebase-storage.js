@@ -76,6 +76,12 @@
 
   /* ref a users/{uid}/health/{subpath} (donde las reglas permiten al dueño) */
   function healthRef(subpath) { return storage.ref('users/' + uid() + '/health/' + subpath); }
+  /* CHAT1 · ref a users/{uid}/public/{subpath}: la zona PÚBLICA que storage.rules
+     ya tenía prevista para el avatar («lo lee cualquier verificado, lo escribe
+     solo el dueño») y que hasta ahora no usaba nadie. Es lo que permite que la
+     foto de perfil se vea en OTRO móvil: mientras siga siendo un dataURL local,
+     los demás solo ven el retrato por defecto. */
+  function publicRef(subpath) { return storage.ref('users/' + uid() + '/public/' + subpath); }
 
   window.CFPhotos = {
     available: true,
@@ -91,6 +97,26 @@
       return withRetry(function () {
         try {
           var ref = healthRef(subpath);
+          return ref.putString(dataURL, 'data_url')
+            .then(function () { return ref.getDownloadURL(); })
+            .then(function (url) { return ok({ url: url }); })
+            .catch(fail);
+        } catch (e) { return Promise.resolve(fail(e)); }
+      });
+    },
+
+    /* CHAT1 · sube un data URL a la zona PÚBLICA (avatar del mini-perfil) y
+       devuelve {ok,url}. Mismo contrato que putDataURL, otra carpeta: aquí lo
+       que se sube SÍ lo puede leer el resto de la comunidad, así que solo debe
+       usarse con el avatar — nunca con nada clínico. */
+    putPublic: function (subpath, dataURL) {
+      if (!active()) return Promise.resolve({ ok: false, code: 'no-session' });
+      if (typeof dataURL !== 'string' || dataURL.indexOf('data:') !== 0) {
+        return Promise.resolve({ ok: false, code: 'not-a-data-url' });
+      }
+      return withRetry(function () {
+        try {
+          var ref = publicRef(subpath);
           return ref.putString(dataURL, 'data_url')
             .then(function () { return ref.getDownloadURL(); })
             .then(function (url) { return ok({ url: url }); })

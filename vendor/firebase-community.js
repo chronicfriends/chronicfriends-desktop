@@ -96,6 +96,14 @@
   function toPost(d) {
     var p = Object.assign({}, d);
     p._cid = d._id;                 /* id del doc en community_posts (para likes/comentarios) */
+    /* CHAT1 · el autor SÍ viaja: `author` pasa a ser el uid de NUBE del que
+       escribió (nunca su 'pat:<email>', que no sale del móvil). Es el mismo
+       criterio que ya usaban los comentarios remotos desde julio (ver toComment
+       más abajo) y es lo que permite tocar al autor para pedirle amistad
+       (CHAT3) y abrir su mini-perfil. isMine() compara contra el uid LOCAL, así
+       que un post remoto sigue sin ser «mío» y nunca se re-sube. */
+    p.author = d.authorUid || null;
+    p._auid = d.authorUid || null;  /* alias explícito: identidad pública del autor */
     delete p._id; delete p._deleted; delete p.authorUid;
     /* FB3b: el conteo de likes NO se lleva en el post, sino en CFPosts.likes[id]
        (recompute lo rellena desde el contador denormalizado). Se pone a 0 aquí

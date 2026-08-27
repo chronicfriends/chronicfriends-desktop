@@ -35,7 +35,11 @@
   };
   var PRODUCT_TO_PLAN = {};
   Object.keys(PLAN_MAP).forEach(function (k) { PRODUCT_TO_PLAN[PLAN_MAP[k].product] = k; });
-  var PRICE_USD = { yearly: 49.99, sixmonth: 29.99, monthly: 7.99, lifetime: 149.99 };
+  /* Tarifa aprobada por Gerhard el 20 ago 2026 y ya aplicada en las dos tiendas.
+     Solo es el metadato que se guarda en cf_plan_v1: el precio que VE el usuario
+     lo manda la tienda (priceByPlan/priceFor). Si se vuelve a cambiar la tarifa,
+     este objeto hay que actualizarlo A LA VEZ o la ficha del plan miente. */
+  var PRICE_USD = { yearly: 167.99, sixmonth: 87.99, monthly: 19.99, lifetime: 599.99 };
 
   var state = { configured: false, entitlement: null, offerings: null };
   var priceByPlan = {};                 /* planId → «7,99 US$» localizado */

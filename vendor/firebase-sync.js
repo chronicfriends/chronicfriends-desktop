@@ -13,8 +13,17 @@
      de Firestore garantizan que SOLO su dueño lo lee/escribe.
    • Última escritura gana (LWW) por marca de tiempo de cliente (campo `ts`).
    • Guardia de tamaño: un doc de Firestore no puede pasar de ~1 MiB; si una
-     caja es mayor (p.ej. foto-diario con imágenes base64) NO se sube y se avisa
-     (esas fotos irán a Firebase Storage en una fase futura).
+     caja es mayor NO se sube y se avisa.
+   • 📸 EL FOTO-DIARIO NO SE RESPALDA, Y AQUÍ NO SE PROMETE QUE SÍ (FB19,
+     23 ago 2026). `cf_photodiary_v1` estuvo meses en esta lista y NUNCA subió
+     ni una foto: photodiary.jsx guarda en IndexedDB (store `photos`) y este
+     motor solo intercepta escrituras de localStorage, así que la clave no
+     llegaba a mirarse. No rompía nada — pero cualquiera que leyera la lista
+     para decidir (yo incluido, el 13 ago) concluía que las fotos de un
+     paciente estaban a salvo. Fuera de la lista: las fotos viven SOLO en el
+     teléfono y se pierden si se desinstala la app. Si algún día se respaldan
+     de verdad, será por Firebase Storage (como la tarjeta médica, FB13) y NO
+     volviendo a poner la clave aquí, que no serviría de nada.
 
    Requiere: window.CFStore (firebase-firestore.js) y window.CFFirebase
    (firebase-init.js). Carga después de ambos y de firebase-auth-wire.js.
@@ -28,7 +37,7 @@
     'cf_flaremode', 'cf_flaremode_v1', 'cf_flaremode_log_v1', 'cf_flaremode_hist_v1',
     'cf_flaremode_kitchen_v1', 'cf_flaremode_longcare_v1', 'cf_flaremode_meals_v1',
     'cf_flaremode_rec_v1', 'cf_flare_fireflies_v1', 'cf_unified_journal_v1',
-    'cf_meds_v3', 'cf_taken_v2', 'cf_photodiary_v1', 'cf_health_card_v1',
+    'cf_meds_v3', 'cf_taken_v2', 'cf_health_card_v1',
     'cf_healthsync_v1', 'cf_food_tolerance_v1', 'cf_streak_v2', 'cf_ncomfort_v1',
     'cf_rating_v1', 'cf_notif_pref_v1', 'cf_notify_country_v1', 'cf_onboarded_v1',
     'cf_scanusage_v1', 'cf_last_export_v1', 'cf_radar_optout_v1', 'cf_member_since_v1',

@@ -1,0 +1,10 @@
+(function(){/* ===================================================================
+   i18nstore — the store owns the subscription (22 Aug 2026).
+   Settings › Membership no longer switches a plan by hand: the button
+   opens Apple's or Google's own subscription screen. Opened on a
+   computer there is no store to send anybody to, so the card says so
+   instead of showing a dead button — this is that one sentence.
+   English is the source key; the 15 remaining app languages inline.
+   Merge-if-missing — never overwrites a wording another screen shows.
+   =================================================================== */(function(){if(typeof CF_UI_MAP==='undefined')return;var M={'Your subscription is managed on your phone, in the App Store or Google Play.':{es:'Tu suscripción se gestiona desde el móvil, en la App Store o Google Play.',ca:'La teva subscripció es gestiona des del mòbil, a l\u2019App Store o Google Play.',fr:'Votre abonnement se gère depuis le téléphone, sur l\u2019App Store ou Google Play.',de:'Dein Abo wird auf dem Handy verwaltet, im App Store oder bei Google Play.',it:'Il tuo abbonamento si gestisce dal telefono, su App Store o Google Play.',pt:'A tua subscrição é gerida no telemóvel, na App Store ou no Google Play.',zh:'你的订阅在手机上管理，在 App Store 或 Google Play 中。',ja:'サブスクリプションは、スマートフォンの App Store または Google Play で管理します。',ko:'구독은 휴대폰의 App Store 또는 Google Play에서 관리합니다.',hi:'आपकी सदस्यता फ़ोन पर, App Store या Google Play में प्रबंधित होती है।',id:'Langgananmu dikelola di ponsel, di App Store atau Google Play.',tr:'Aboneliğin telefonda, App Store veya Google Play üzerinden yönetilir.',ru:'Подписка управляется на телефоне, в App Store или Google Play.',vi:'Gói đăng ký của bạn được quản lý trên điện thoại, trong App Store hoặc Google Play.',ar:'يُدار اشتراكك على الهاتف، في App Store أو Google Play.'}};Object.keys(M).forEach(function(k){if(!CF_UI_MAP[k])CF_UI_MAP[k]=M[k];else Object.keys(M[k]).forEach(function(l){if(!CF_UI_MAP[k][l])CF_UI_MAP[k][l]=M[k][l];});});})();
+})();

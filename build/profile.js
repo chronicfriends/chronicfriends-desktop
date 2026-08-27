@@ -3,13 +3,20 @@
    Holds name, status line and avatar (uploaded photo OR a colour with
    initials). Persists to localStorage so edits stick across reloads,
    and notifies subscribers (avatar, welcome bar, settings, posts…).
-   =================================================================== */const CF_PROFILE_KEY='cf_profile_v1';const CF_PROFILE_DEFAULTS={name:'Gerard',email:'gerard@crohnfriends.app',status:'',// optional short status / bio line
+   =================================================================== */const CF_PROFILE_KEY='cf_profile_v1';/* BARRIDO24 §3 — no invented identity. The defaults were a real person's
+   name and an address on the abandoned crohnfriends.app brand, and the
+   email is PAINTED ON SCREEN under the name in Settings. Empty is the
+   honest default: the session email (the address used to sign in) is
+   surfaced over it anyway, and whoever has no name yet gets the generic
+   translated «Your profile», never somebody else's name. */const CF_PROFILE_DEFAULTS={name:'',email:'',status:'',// optional short status / bio line
 country:null,// nationality (English country name; flag/翻訳 derived from it)
 avatarPhoto:null,// dataURL of an uploaded photo
 avatarColor:null// hex of a chosen colour avatar (with initials)
 };/* curated avatar colours (shared chroma/lightness, varied hue) */const CF_AVATAR_COLORS=['#3f8a3f','#1fa596','#2f7fd4','#7556d0','#d4569e','#d98a26','#c0563f'];function cfLoadProfile(){try{const r=JSON.parse(localStorage.getItem(CF_PROFILE_KEY));if(r&&typeof r==='object')return cfWithSessionEmail({...CF_PROFILE_DEFAULTS,...r});}catch(e){}return cfWithSessionEmail({...CF_PROFILE_DEFAULTS});}/* The signed-in email is the session's source of truth (the email used to
    log in). It is NOT user-editable, so always surface it over any stored /
-   default profile email — that way Settings shows whoever is logged in. */function cfSessionEmail(){try{const a=JSON.parse(localStorage.getItem('cf_auth_v1'));/* shared, un-namespaced */return a&&a.email?a.email:null;}catch(e){return null;}}function cfWithSessionEmail(obj){const se=cfSessionEmail();if(se)obj.email=se;return obj;}const CFProfile={data:cfLoadProfile(),listeners:new Set(),subscribe(fn){this.listeners.add(fn);return()=>this.listeners.delete(fn);},persist(){try{localStorage.setItem(CF_PROFILE_KEY,JSON.stringify(this.data));}catch(e){}},emit(){this.persist();this.listeners.forEach(fn=>fn());},get(){return cfWithSessionEmail({...this.data});},update(patch){this.data={...this.data,...patch};this.emit();},firstName(){return(this.data.name||'Gerard').trim().split(/\s+/)[0];},initials(){const parts=(this.data.name||'G').trim().split(/\s+/).filter(Boolean);const a=parts[0]?parts[0][0]:'G';const b=parts.length>1?parts[parts.length-1][0]:'';return(a+b).toUpperCase();}};/* ---------------------------------------------------------------------------
+   default profile email — that way Settings shows whoever is logged in. */function cfSessionEmail(){try{const a=JSON.parse(localStorage.getItem('cf_auth_v1'));/* shared, un-namespaced */return a&&a.email?a.email:null;}catch(e){return null;}}function cfWithSessionEmail(obj){const se=cfSessionEmail();if(se)obj.email=se;return obj;}const CFProfile={data:cfLoadProfile(),listeners:new Set(),subscribe(fn){this.listeners.add(fn);return()=>this.listeners.delete(fn);},persist(){try{localStorage.setItem(CF_PROFILE_KEY,JSON.stringify(this.data));}catch(e){}},emit(){this.persist();this.listeners.forEach(fn=>fn());},get(){return cfWithSessionEmail({...this.data});},update(patch){this.data={...this.data,...patch};this.emit();},/* §3: no reserve name. Empty in → empty out, and each caller decides
+     what to show (a generic translated label, or nothing at all). */firstName(){return(this.data.name||'').trim().split(/\s+/)[0]||'';},initials(){/* falls back to the signed-in email's first letter, never to a letter
+       borrowed from somebody's name */const src=(this.data.name||'').trim()||(cfSessionEmail()||'').trim();const parts=src.split(/\s+/).filter(Boolean);if(!parts.length)return'';const a=parts[0][0];const b=parts.length>1?parts[parts.length-1][0]:'';return(a+b).toUpperCase();}};/* ---------------------------------------------------------------------------
    DOCTOR TITLE — gender + language aware (single source of truth).
    The data model stores `docTitle` ('none' | 'doctor') and `docGender`
    ('m' | 'f' | 'x'); the visible abbreviation is rendered at runtime from the

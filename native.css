@@ -41,8 +41,79 @@ html, body { height: 100%; overflow: hidden; }
 /* La tabbar del diseño trae padding 10px arriba / 26px abajo (colchón del
    indicador de inicio del preview), inflados además por el zoom 1.3. Petición
    de Gerhard (6 jul 2026): SIN márgenes arriba/abajo del footer, botones al
-   mismo tamaño — solo se quita el aire (los .tab ya llevan 4px propios). */
-.tabbar { padding-top: 0 !important; padding-bottom: 10px !important; }
+   mismo tamaño — solo se quita el aire (los .tab ya llevan 4px propios).
+
+   🔴 UX28 (16 ago 2026) — ESTA LÍNEA TAPABA LAS PESTAÑAS EN ANDROID.
+   Lo destapó la foto del teléfono de un amigo de Gerhard: la barra de
+   navegación del sistema (3 botones, ~48 dp) se comía la barra de pestañas.
+   Los 10px fijos son correctos para el aire del diseño, pero no reservan NADA
+   para la barra del sistema, y este `!important` gana a los dos intentos que
+   la webapp sí hacía bien (responsive.css:43 y styles.css:196).
+   Por qué no bastaba con lo que ya había: dentro del WebView de Android
+   `env(safe-area-inset-bottom)` vale 0 aunque el index.html declare
+   `viewport-fit=cover` — la misma trampa que obligó a poner números fijos en
+   las cabeceras de arriba. La medida BUENA la publica App.js en `--cf-sab`
+   (useSafeAreaInsets, desde el 6 jul), y hasta hoy no la leía nadie.
+   Se conserva la petición de Gerhard: 10px de aire y ni uno más; lo único que
+   se añade es exactamente lo que mide la barra del sistema, que en un aparato
+   sin barra vale 0 y deja la pantalla EXACTAMENTE como estaba.
+   `env(...)` queda de reserva para el navegador de escritorio, donde sí vale. */
+.tabbar { padding-top: 0 !important;
+  padding-bottom: calc(10px + var(--cf-sab, env(safe-area-inset-bottom, 0px))) !important; }
+
+/* 🍏 EXCEPCIÓN PARA iPHONE (25 ago 2026) — la regla de arriba se hizo PARA
+   ANDROID, donde la barra de 3 botones tapaba de verdad las pestañas. En iPhone
+   no hay tal barra: solo el indicador de inicio, que se dibuja ENCIMA y no tapa
+   nada — así que ese hueco se suma al que ya había y engorda la franja blanca.
+   MEDIDO en Chromium a 393×852 (tools/verify-tabbar-ios.mjs), en px de pantalla:
+       1.0.1 (build 32)   88,19      ← lo que Gerhard tenía y daba por bueno
+       build 34           122,19     ← +34,00 exactos, sin que los iconos se movieran
+       con esta regla     88,19      ← idéntica a la 1.0.1
+   Android no se entera (mide 136,19 con y sin esta regla) y los otros seis
+   sitios que leen --cf-sab (.sheet, .coop-sheet, .vc-share, .nc-body y los dos
+   avisos flotantes) salen idénticos: ese es el motivo de tocar SOLO .tabbar y
+   no la variable, que fue el primer arreglo propuesto y se descartó midiendo.
+   La marca `data-cf-os` la planta native/App.js, que es el único que sabe en
+   qué teléfono corre; en el navegador de escritorio no existe y aquí no pasa
+   nada. Este valor —10px— es literalmente el que traía la 1.0.1. */
+html[data-cf-os="ios"] .tabbar { padding-bottom: 10px !important; }
+
+/* UX28 · lo mismo para todo lo que se pega al borde de abajo. Sus botones
+   quedaban igual de tapados, solo que se ve menos porque son pantallas que no
+   están siempre abiertas. El CSS del diseño ya lo intentaba con
+   `env(safe-area-inset-bottom)`, que dentro del WebView de Android vale 0: aquí
+   solo se le cambia la fuente del dato, conservando su colchón original. */
+.sheet      { padding-bottom: calc(22px + var(--cf-sab, env(safe-area-inset-bottom, 0px))) !important; }
+.coop-sheet { padding-bottom: calc(18px + var(--cf-sab, env(safe-area-inset-bottom, 0px))) !important; }
+.vc-share   { padding-bottom: calc(20px + var(--cf-sab, env(safe-area-inset-bottom, 0px))) !important; }
+/* avisos flotantes: van medidos DESDE abajo, así que suben con la barra */
+.cf-block-toast { bottom: calc(96px + var(--cf-sab, env(safe-area-inset-bottom, 0px))) !important; }
+.coop-toast     { bottom: calc(84px + var(--cf-sab, env(safe-area-inset-bottom, 0px))) !important; }
+
+/* UX28 · EL REMATE (23 ago 2026) — los dos sitios que quedaban.
+   El barrido de hoy encontró que de los 7 sitios que la ficha listaba, cinco ya
+   estaban tapados arriba (.sheet, .coop-sheet, .vc-share y los dos avisos
+   flotantes) y quedaban estos dos:
+
+   1) `.nc-body` (normalcomfort.css:40) — el cuerpo con scroll de la pantalla de
+      confort. Reserva `26px + env(safe-area-inset-bottom)`, y dentro del WebView
+      de Android ese `env()` vale 0: el final del texto queda debajo de la barra
+      de 3 botones del sistema. Se le cambia solo la FUENTE del dato, conservando
+      su colchón original de 26px, igual que se hizo con las hojas modales.
+
+   2) `--safe-bottom` (responsive.css:19) — la variable que la webapp define como
+      `env(safe-area-inset-bottom, 0px)`, es decir, 0 en Android. Hoy solo la lee
+      `.tabbar` (responsive.css:43), que ya está resuelta con `!important` más
+      arriba, así que ahora mismo no rompe nada visible. Se redefine igualmente
+      para que cualquier hoja futura que use `var(--safe-bottom)` nazca midiendo
+      la barra de verdad en vez de heredar el cero. native.css se carga la ÚLTIMA
+      (index.html:26), después de responsive.css (:21), así que esta definición
+      gana por orden sin necesidad de `!important`.
+
+   En un aparato sin barra de botones `--cf-sab` vale 0 y las dos reglas dejan la
+   pantalla EXACTAMENTE como estaba. */
+.nc-body { padding-bottom: calc(26px + var(--cf-sab, env(safe-area-inset-bottom, 0px))) !important; }
+:root    { --safe-bottom: var(--cf-sab, env(safe-area-inset-bottom, 0px)); }
 
 /* ===== FLARE RADAR — reestructurado para pantalla real (6 jul 2026) =======
    Con el zoom global 1.3 el ancho útil baja a ~300px y el radar del diseño
