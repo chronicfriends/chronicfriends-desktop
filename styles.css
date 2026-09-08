@@ -422,26 +422,92 @@ body{
 .tchip.tap:active{transform:translateY(1px);}
 .tchip.tap.on{box-shadow:0 3px 8px -3px rgba(58,140,45,.28),inset 0 0 0 1.5px rgba(86,184,63,.55);}
 
-/* segmented control */
-.seg{display:flex;gap:6px;background:#e7eee0;border-radius:16px;padding:5px;
+/* segmented control
+   A word in this bar may NEVER be split. `.screen` sets overflow-wrap:break-word
+   for the whole app (responsive.css:37) and it is inherited here, so "Setmana"
+   became "Setman a" and "Aujourd'hui" "Aujourd' hui".
+
+   DEVOLUCIÓN 30 Aug 2026 §2 — the 29 Aug answer (nowrap + clamp(9.5,2.9vw,13.5)
+   + 2px padding) was measured against the SCREEN (2.9vw = 393px) and not against
+   the button it has to fit (60px): fr «Aujourd'hui» stopped splitting and started
+   spilling over its neighbour, and two bars nobody complained about (Friends /
+   Global, and the 2×2 medication type) lost 16% of their letter size for nothing.
+   Both are undone. What fits a word to ITS OWN button is not a font size, it is
+   an intrinsic minimum: `min-width:max-content` says «never narrower than the
+   whole label», and `flex-wrap:wrap` gives the bar a second line when the labels
+   really do not fit on one — measured per language, by the layout itself, at any
+   width and any zoom. Equal-width segments while everything fits (basis 0),
+   uneven ones when one language needs the room, never a split and never a spill.
+   Measured in audit/chips-widths-2026-08-30.html. */
+.seg{display:flex;flex-wrap:wrap;gap:6px;background:#e7eee0;border-radius:16px;padding:5px;
   box-shadow:inset 0 2px 5px rgba(60,80,55,.18);}
 .seg button{
-  flex:1;min-width:0;border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13.5px;
+  flex:1 1 0;min-width:max-content;max-width:100%;border:none;cursor:pointer;font-family:inherit;font-weight:700;
+  font-size:13.5px;white-space:nowrap;overflow-wrap:normal;word-break:normal;
   padding:11px 4px;border-radius:12px;color:var(--muted);background:transparent;
   transition:all .18s ease;
 }
+/* DEVOLUCIÓN-2 30 Aug 2026 §5.1 — the periods bar (Today / Week / Month / Year,
+   stepsboard.jsx) gets its own class and goes back to production's 12.5px.
+   13.5px left it with no slack at all: at 393pt (327.5 css px of layout) the
+   French row measured 274 of the 274 px available, so every narrower iPhone —
+   375pt (SE 2nd/3rd gen, 8, 13 mini) = 312.5 css px, 320pt = 266.7 — took the
+   second line the wrap gives it, and «Année» then stretched across the whole
+   row and stopped looking like one of four periods. At 12.5px «Aujourd'hui»
+   asks ~83 px instead of ~89 and the four labels fit on one row at 375 too.
+   min-width:max-content stays: the size of the letter was never the defect,
+   the slack was. Every other .seg keeps its 13.5px, untouched.
+   And because 12.5px does NOT reach every iPhone — at 320 pt (213 css px of
+   bar) fr, it and id still need more than the row has, as they already did in
+   production — the wrap that is left is made harmless with §5.1's other half:
+   a period button is never wider than half the bar, so the label that goes to
+   the second line stays a period button (centred) instead of becoming a
+   full-width control. Measured at 320 pt / fr: 213 px of «Année» before, 103.5
+   after. min-width:max-content still wins over max-width by definition, so no
+   label is ever cut or shrunk. */
+.seg.periods{justify-content:center;}
+.seg.periods button{font-size:12.5px;max-width:calc(50% - 3px);}
 /* 2×2 grid variant — for option sets whose labels grow long after translation
    (medication type: Tablet / Capsule / Injection / Eye drops). Keeps every
-   option fully visible & centered instead of overflowing into a side-scroll. */
+   option fully visible & centered instead of overflowing into a side-scroll.
+   This variant DOES wrap on purpose (it has two lines of room), so it
+   re-enables what `.seg button` forbids. */
 .seg.grid2{display:grid;grid-template-columns:1fr 1fr;}
 .seg.grid2 button{
-  flex:none;width:100%;min-height:44px;text-align:center;line-height:1.2;
+  flex:none;width:100%;min-width:0;min-height:44px;text-align:center;line-height:1.2;
   white-space:normal;overflow-wrap:break-word;
 }
 .seg button.on{
   color:#fff;background:linear-gradient(180deg,#7bd853,#54b035);
   box-shadow:0 5px 11px rgba(58,140,45,.4),inset 0 2px 2px rgba(255,255,255,.5);
 }
+
+/* ---- THE TWO CHIP FAMILIES (devolución 30 Aug 2026 §1) ------------------
+   Both carried their break order INSIDE the element (overflow-wrap:'anywhere'
+   in checkin.jsx, 'break-word' in screens.jsx), so no stylesheet could reach
+   them and both were already splitting words on the iPhone, not only on
+   Android: es «Ninguno» 53>46 · «Descansa» 61>46 · fr «Reposez-vous» 88>46 ·
+   es «Publicaciones» 83>72. The size of the letter is NOT what is wrong — the
+   slot is. Same mechanism as .seg above, and no word is abbreviated, hyphenated
+   or shrunk in any of the 16 languages.
+
+   .ck-seg — the journal's answer pills. max-content: a pill is never narrower
+   than its own label, so the row simply takes a second line when a language
+   needs it (fr «Reposez-vous»). The row already lived inside a column with a
+   20px gap, so a taller row pushes, it never overlaps.
+   .cm-tab — the Community tabs. min-content (the longest WORD, not the whole
+   label) so «Chronic Friends» keeps its two lines exactly as today and only a
+   real single long word («Publicaciones») claims the extra width from its
+   neighbours. The bar stays one row of four tabs in every language. */
+.ck-seg{display:flex;flex-wrap:wrap;gap:4px;border-radius:14px;padding:4px;
+  box-shadow:inset 0 2px 4px rgba(90,110,85,.2);}
+.ck-seg>button{
+  flex:1 1 0;min-width:max-content;max-width:100%;padding:9px 6px;border-radius:11px;
+  border:none;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;
+  line-height:1.15;white-space:normal;overflow-wrap:normal;word-break:normal;hyphens:none;
+  transition:all .15s ease;
+}
+.cm-tab{min-width:min-content;overflow-wrap:normal;word-break:normal;hyphens:none;}
 
 /* small stat tiles */
 .stat-tile{
@@ -1369,3 +1435,83 @@ html[lang="ca"] .fr-title{font-size:15px;line-height:1.16;}
   font-family:inherit;font-size:11.5px;font-weight:800;color:var(--muted);background:#fff;border-radius:14px;
   box-shadow:inset 0 0 0 1.5px rgba(120,140,115,.18);transition:box-shadow .12s,color .12s,background .12s;}
 .ft-seg-dot{width:10px;height:10px;border-radius:50%;}
+
+/* ===================================================================
+   THE DAILY CHECK-IN FLOW (checkinflow.jsx) — one question, one
+   screen, one tap. Anchored to the phone .screen like .alarm-ov.
+   NOTHING here may scroll: the sheet clips, and the flow chooses one
+   or two columns so every question fits the screen it owns.
+   =================================================================== */
+.ckf-ov{position:absolute;inset:0;border-radius:42px;overflow:hidden;z-index:145;display:flex;flex-direction:column;
+  background:radial-gradient(130% 110% at 50% 0%,#0a9a48 0%,#04823b 52%,#036830 100%);animation:bdIn .22s ease;}
+.ckf-top{display:flex;align-items:center;gap:10px;padding:22px 18px 0;flex:none;}
+.ckf-ic{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;flex:none;
+  background:rgba(255,255,255,.14);color:#eafde3;display:flex;align-items:center;justify-content:center;}
+.ckf-bar{flex:1 1 auto;min-width:52px;height:6px;border-radius:4px;background:rgba(255,255,255,.22);overflow:hidden;}
+.ckf-bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#9fe07a,#74d64c);transition:width .2s ease;}
+/* the counter says what is LEFT — discreet, never big, never red */
+.ckf-count{flex:none;font-size:12.5px;font-weight:800;color:rgba(214,245,205,.9);white-space:nowrap;
+  font-variant-numeric:tabular-nums;overflow-wrap:normal;word-break:normal;}
+/* 🔴 THE QUESTION BAND HAS A FIXED HEIGHT (Gerhard, 7 Sep 2026): its content
+   is centred inside, so the question sits in the SAME place on every screen —
+   a question with two options and one with five must not move the text. Same
+   air above the block as below, and generous side margins: 38 screens in a
+   row have to feel like an orderly tick-tick-tick, not like something that
+   moves by itself. Percentage, not pixels, so it holds on a smaller phone. */
+.ckf-q{flex:none;height:27%;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;padding:6px 26px;text-align:center;animation:ckfIn .16s ease-out;}
+.ckf-halo{width:60px;height:60px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;color:#fff;
+  background:radial-gradient(120% 120% at 30% 25%,rgba(255,255,255,.34),rgba(255,255,255,.1));
+  box-shadow:inset 0 2px 2px rgba(255,255,255,.4),0 12px 26px -12px rgba(8,40,12,.6);}
+/* 21 px: one step below the alarm title (23-25) — it is a question, not an
+   alarm. «Only a little bigger», never a screen that shouts. A long label
+   drops to 19 before a single word gets cut. */
+.ckf-title{font-size:21px;font-weight:800;color:#fff;letter-spacing:-.015em;line-height:1.28;text-wrap:pretty;
+  max-width:340px;overflow-wrap:normal;word-break:normal;hyphens:none;}
+.ckf-title.long{font-size:19px;line-height:1.3;}
+/* the closing screen does NOT share the fixed band: its content is taller
+   (bigger halo + a two-line farewell) and in German or French it overflowed
+   27% and was painted under the sheet. It is a one-off screen — nothing has
+   to sit at a fixed y — so it grows with its text. */
+.ckf-q.done{height:auto;padding-top:38px;padding-bottom:10px;}
+.ckf-sub{font-size:13.5px;font-weight:600;color:rgba(223,240,212,.9);line-height:1.5;max-width:280px;text-wrap:pretty;}
+.ckf-value{font-size:29px;font-weight:800;color:#eafde3;letter-spacing:-.02em;}
+/* a plain, quiet entrance: opacity and 6 px. NEVER a 3D flip, a card that
+   turns or a bounce — 38 screens answered by somebody who may be in a flare,
+   dizzy or exhausted, and the animation must never make the finger wait. */
+@keyframes ckfIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+.ckf-sheet{flex:1 1 auto;min-height:0;overflow:hidden;background:var(--card);border-radius:30px 30px 0 0;
+  padding:24px 22px 30px;box-shadow:0 -16px 34px -18px rgba(8,30,8,.65);display:flex;flex-direction:column;gap:12px;
+  animation:ckfIn .16s ease-out;}
+.ckf-opts{display:grid;gap:10px;align-content:center;flex:1 1 auto;min-height:0;max-width:340px;width:100%;margin:0 auto;}
+/* 16.5 px: the size of the full-screen buttons this app already uses */
+.ckf-opt{border:none;cursor:pointer;font-family:inherit;font-weight:800;font-size:16.5px;line-height:1.25;text-wrap:pretty;
+  color:var(--ink-soft);background:var(--white);border-radius:18px;padding:16px 14px;min-height:58px;
+  overflow-wrap:normal;word-break:normal;
+  box-shadow:inset 0 0 0 1.5px rgba(120,150,110,.22),0 2px 6px rgba(30,60,30,.06);
+  transition:background .15s ease,color .15s ease,box-shadow .15s ease;}
+.ckf-opt.on{color:#fff;background:linear-gradient(180deg,#7bd853,#3f8a3f);
+  box-shadow:0 8px 16px -6px rgba(60,140,60,.55),inset 0 2px 2px rgba(255,255,255,.4);}
+.ckf-opt:active{transform:translateY(1px);}
+.ckf-nums{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;max-width:340px;width:100%;margin:0 auto;}
+.ckf-num{border:none;cursor:pointer;font-family:inherit;font-size:17px;font-weight:800;height:56px;border-radius:16px;
+  transition:background .15s ease,color .15s ease;}
+.ckf-minmax{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:700;color:var(--muted-2);
+  max-width:340px;width:100%;margin:0 auto;}
+/* `.screen` sets overflow-wrap:break-word for the whole app (responsive.css)
+   and it is inherited: without this, «Recordatori» broke as «Recordato/ri» in
+   the reminder rows. A word is never split — the row wraps between words. */
+.ckf-lbl{overflow-wrap:normal;word-break:normal;hyphens:none;}
+.ckf-hint{font-size:12px;font-weight:600;color:var(--muted-2);text-align:center;text-wrap:pretty;}
+.ckf-hsline{font-size:15px;font-weight:700;color:var(--ink-soft);line-height:1.5;text-align:center;text-wrap:pretty;padding:2px 4px 4px;}
+.ckf-foot{margin-top:auto;display:flex;flex-direction:column;gap:9px;flex:none;max-width:340px;width:100%;margin-inline:auto;}
+.ckf-skip{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:15px;color:var(--muted);
+  background:rgba(60,90,60,.08);border-radius:22px;padding:15px;}
+.ckf-quiet{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;color:var(--muted);
+  background:none;padding:8px 4px;text-align:center;}
+@media (prefers-reduced-motion: reduce){
+  .ckf-ov,.ckf-q,.ckf-sheet{animation:none;}
+  .ckf-bar i{transition:none;}
+  .ckf-opt{transition:none;}
+  .ckf-opt:active{transform:none;}
+}

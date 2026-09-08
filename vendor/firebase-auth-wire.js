@@ -260,6 +260,48 @@
       };
       var failMsg = function () { toast(T('fb_del_err', 'We could not delete your account. Please try again.'), 'error'); };
 
+      /* Art. 17 · derecho de supresión (3 sep 2026). ANTES de borrar el usuario
+         de Firebase Auth hay que borrar lo que publicó a otros y lo que solo él
+         tiene permiso de borrar: en cuanto desaparece de Auth, ya nadie puede
+         tocar esos documentos y quedan huérfanos PARA SIEMPRE — con su edad y
+         sus años de enfermedad dentro (users/{uid}/public/profile). La Política
+         v3.1 §6 promete que al cerrar la cuenta se borran: aquí se cumple.
+           · users/{uid}/public/profile   ← los 4 campos del interruptor + nombre/avatar
+           · directory/{uid}              ← «Let others find me» (nombre, avatar, rol, lastSeen)
+           · steps_board/{uid}            ← la fila del torneo de pasos
+           · users/{uid}/private/settings ← findable
+           · users/{uid}/private/push     ← tokens de notificación (CHAT7)
+         Es lo mejor posible DESDE EL CLIENTE: si un borrado falla se sigue con
+         la cuenta (Apple exige que borrar la cuenta siempre sea posible) y se
+         deja rastro en consola; el resto (health/*, posts, chats) lo cubre la
+         Cloud Function onDelete del RoadMap. Idempotente: borrar un documento
+         que no existe no es error, así que reintentar tras la reautenticación
+         es seguro. NO exige login reciente (eso solo lo pide u.delete()). */
+      var purgeCloudFootprint = function () {
+        var u = null; try { u = FB().currentUser(); } catch (e) {}
+        var me = u && u.uid; var st = window.CFStore;
+        if (!me || !st || typeof st.del !== 'function') return Promise.resolve({ ok: false, code: 'unavailable', failed: [] });
+        var paths = [
+          'users/' + me + '/public/profile',
+          'directory/' + me,
+          'steps_board/' + me,
+          'users/' + me + '/private/settings',
+          'users/' + me + '/private/push'
+        ];
+        var failed = [];
+        return Promise.all(paths.map(function (p) {
+          var one;
+          try { one = st.del(p); } catch (e) { one = Promise.resolve({ ok: false }); }
+          return Promise.resolve(one).then(
+            function (r) { if (!(r && r.ok)) failed.push(p); return r; },
+            function () { failed.push(p); return { ok: false }; }
+          );
+        })).then(function () {
+          if (failed.length) { try { console.warn('[cf-delete] art.17: cloud footprint NOT fully removed:', failed.join(', ')); } catch (e) {} }
+          return { ok: !failed.length, failed: failed };
+        });
+      };
+
       /* Firebase exigió login reciente → pedir contraseña, reautenticar y reintentar. */
       var reauthAndDelete = function () {
         var pw = null;
@@ -268,7 +310,7 @@
         if (pw == null) { toast(T('fb_del_cancel', 'Account deletion cancelled.')); return; }  /* cancelado: no borra nada */
         FB().reauthenticate(pw).then(function (r) {
           if (!(r && r.ok)) { toast(T('fb_del_badpw', 'Wrong password — your account was not deleted.'), 'error'); return; }
-          FB().deleteAccount().then(function (r2) {
+          purgeCloudFootprint().then(function () { return FB().deleteAccount(); }).then(function (r2) {
             if (r2 && r2.ok) { wipeAndReload(); } else { failMsg(); }
           }).catch(failMsg);
         }).catch(failMsg);
@@ -276,7 +318,7 @@
 
       try {
         if (available() && FB().currentUser()) {
-          FB().deleteAccount().then(function (r) {
+          purgeCloudFootprint().then(function () { return FB().deleteAccount(); }).then(function (r) {
             if (r && r.ok) { wipeAndReload(); return; }
             if (r && String(r.code).indexOf('requires-recent-login') >= 0) { reauthAndDelete(); return; }
             failMsg();                                 /* otro error (red/servidor): NO borres local, deja reintentar */

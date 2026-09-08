@@ -180,7 +180,10 @@
     try {
       var mirror = load(MIRROR_KEY);
       var prev = mirror[uid];
-      if (prev && prev.name === doc.name && prev.avatar === doc.avatar && prev.lang === doc.lang) return;
+      /* CHAT1a_CAMPOS: la comparacion miraba solo name/avatar/lang, asi que
+         alguien que cambiase su edad o su biografia NO refrescaba el espejo y
+         la ficha seguia enseñando lo viejo. Se compara el documento entero. */
+      if (prev && JSON.stringify(prev) === JSON.stringify(doc)) return;
       mirror[uid] = doc;
       save(MIRROR_KEY, mirror);
       try { window.dispatchEvent(new Event('cf-public-profile')); } catch (e) {}
@@ -199,6 +202,23 @@
     var p = ST().get('users/' + uid + '/public/profile').then(function (d) {
       var doc = null;
       try { doc = (window.cfPubSanitize && window.cfPubSanitize(d)) || null; } catch (e) { doc = d || null; }
+      /* CHAT1a_CAMPOS (31 ago 2026) — REPONER lo que el sanitizador no conoce.
+         cfPubSanitize vive en build/publicprofile.js (Claude Design) y recorta a
+         {name, avatar, lang}: es su lista blanca, y hace bien en tenerla. Pero
+         desde hoy el mini-perfil lleva ademas pais, edad, años con la enfermedad
+         y biografia — los datos REALES que sustituyen a los que la app se
+         inventaba. Si no se reponen aqui, se leen de la nube y se tiran en el
+         acto, y la ficha se queda igual de vacia que antes.
+         Se reponen desde `d`, el documento CRUDO, y con las mismas cotas que
+         imponen las reglas: lo que no cumpla, no entra. Cuando Claude Design
+         amplie cfPubSanitize esto sobrara y se podra quitar — mientras tanto,
+         el motor no depende de que lo haga. */
+      if (doc && d) {
+        if (typeof d.country === 'string' && d.country) doc.country = d.country.slice(0, 56);
+        if (typeof d.bio === 'string' && d.bio) doc.bio = d.bio.slice(0, 300);
+        var ag = Number(d.age); if (isFinite(ag) && ag >= 18 && ag <= 120) doc.age = Math.round(ag);
+        var cy = Number(d.crohnYears); if (isFinite(cy) && cy >= 0 && cy <= 100) doc.crohnYears = Math.round(cy);
+      }
       cache(uid, doc);
       delete inflight[uid];
       return doc;

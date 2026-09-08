@@ -1,10 +1,27 @@
 (function(){/* ===================================================================
-   PUBLIC MINI-PROFILE — the ONLY data of a user other people can read.
-   Firestore contract (server-enforced): users/{uid}/public/profile
-   accepts EXACTLY { name(≤80), avatar(≤512), lang(≤8), updatedAt }.
-   Any other field is REJECTED by the security rules — cfPubSanitize is
-   the client-side mirror of that whitelist, so nothing clinical
-   (diagnosis, journal, meds, care country, …) can ever be published.
+   PUBLIC MINI-PROFILE — what THIS module publishes about a user.
+   Firestore doc (server-enforced): users/{uid}/public/profile. This
+   module writes EXACTLY { name(≤80), avatar(≤512), lang(≤8), updatedAt }
+   and NOTHING else: cfPubSanitize is its hard whitelist and stays that
+   way, so nothing clinical (a diagnosis, the journal, medications,
+   symptoms) can ever be published from here.
+
+   IDS-2 (31 Aug 2026) — THE SAME DOC ALSO CARRIES FOUR MORE FIELDS, AND
+   THEY ARE NOT OURS: country · age · crohnYears · bio are written by
+   another module, webapp/vendor/cf-profile-share.js (outside this tree),
+   under its own permission — the «Show my details on my profile» switch
+   in Settings › Privacy & Data, born OFF — and the security rules accept
+   those four since 31 Aug 2026, by Gerhard's express decision. This
+   header used to say the rules take EXACTLY our four and that the care
+   country therefore «can never be published»: that is no longer true.
+   Nobody may «restore» this whitelist into the server rules believing it
+   closes a leak — that would break IDS-2. What this module must keep
+   doing is writing only its own four.
+
+   Why the two modules do not wipe each other: CFStore.set without
+   {overwrite:true} MERGES, and cfPublicProfileSync calls it without that
+   option. Adding {overwrite:true} here would delete the other module's
+   four fields on the next sync — whoever touches that call has to know.
 
    Design build: window.CFStore isn't wired yet, so the doc is mirrored
    into a GLOBAL localStorage map (cf_public_profiles_v1) that plays the

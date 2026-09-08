@@ -150,3 +150,22 @@ html[data-cf-os="ios"] .tabbar { padding-bottom: 10px !important; }
 .mfr-gauge > div:has(> .mfr-gauge-lab) { min-width: 96px; flex: 1 1 96px; }
 .mfr-gauge-eyebrow, .mfr-gauge-lab { overflow-wrap: normal; word-break: normal; }
 .mfr-gauge-lab { white-space: nowrap; }
+
+/* ===== ANDROID: que el sistema no reescale el texto (29 ago 2026) =========
+   Lo destapó ver la app en un Android que no era el de Gerhard: «Registro»
+   salía como «ro» y las frases caían en una columna de una palabra por línea.
+
+   Son DOS mecanismos distintos y hacen falta los dos:
+     · textZoom (native/App.js) — el ajuste «Tamaño de letra» del sistema. Se
+       respeta hasta el 115 % y ahí se corta; es una app de salud y hay gente
+       que agranda la letra porque la necesita.
+     · text-size-adjust (aquí) — el «font boosting» del WebView de Chrome, que
+       agranda por su cuenta el texto de los bloques anchos cuando cree que la
+       página no es responsive. No lo pide nadie y no avisa.
+
+   Solo Android: `data-cf-os` lo planta App.js y ya se usa arriba para iOS.
+   En iPhone la app se ve BIEN hoy y no se toca (decisión de Gerhard, 29 ago). */
+html[data-cf-os="android"] {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}

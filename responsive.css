@@ -36,8 +36,176 @@ html, body { overflow-x: hidden; }
    app root cascades to all text. */
 .screen { overflow-wrap: break-word; }
 
+/* --- A1 (BUILD 1.0.3 ANDROID §A1) — a word may NEVER be split in half.
+   R4 above is a safety net for long words in body copy, and it is INHERITED,
+   so it also reached the elements where a mid-word break is always a defect:
+   «teléfon / o» in a card title, «Regist / ro» inside a button. This is the
+   one rule of the Android brief allowed outside html[data-cf-os="android"].
+
+   ⚠️ PLAIN `button` IS DELIBERATELY NOT IN THIS LIST, and the brief's premise
+   for it («en iOS hoy no se parte nada») turned out to be false. Measured in
+   audit/android-widths-2026-08-29.html at the iPhone's own layout width, the
+   Journal check-in chips and the Community tabs ALREADY split today, on iOS
+   as much as on Android: es «Ninguno» 53>46px · «Descansa» 61>46 · «Coca»
+   34>33 · de «Rötung» 47>46 · «Mundgeschwür» 101>100 · «Knie» 29>28 · es
+   «Publicaciones» 83>72. `overflow-wrap` is the LAST-RESORT switch: forbidding
+   the break in a 58px chip does not make the word fit, it makes it spill out
+   of the pill and over its neighbour — which is worse than a split, and it
+   would have changed the iPhone. Those chips need a real decision (a smaller
+   font, or two-line chips) — they are listed in
+   audit/build103-android-2026-08-29.json, not silently traded here.
+   The button the brief actually cared about, Home's Check-In, is fixed where
+   the fault was: it now HAS the room (§A2 + §A5) and splits in no language.
+
+   `.seg.grid2 button` keeps its intentional 2-line wrap (higher specificity,
+   styles.css). `.tab` is not listed: it already carries white-space:nowrap
+   (styles.css:207), which R4 never touched. `.chip` is not listed either: it
+   does not exist in this CSS (the real class is `.med-chip`, an icon box).
+   Measured effect of this rule TODAY: none. No `.pill`, `.eyebrow`, `h1`,
+   `h2` or `h3` in the 38-state sweep holds a word wider than its own box, on
+   either platform — so nothing moves on the iPhone, and the guarantee is
+   there for whatever copy comes next. */
+.seg button, .pill, .eyebrow, h1, h2, h3{
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: none;
+}
+
 /* --- R6: the bottom tab bar clears the home indicator on a
    real device. max() keeps the existing 26px in the preview
    (where --safe-bottom is 0), so there is no visual change
    here — it only grows on a device with a real inset. */
 .tabbar { padding-bottom: max(26px, calc(10px + var(--safe-bottom))); }
+
+/* ============================================================
+   BUILD 1.0.3 — ANDROID ONLY (29 Aug 2026)
+   ------------------------------------------------------------
+   THE IPHONE IS NOT TOUCHED. Everything below is locked behind
+   html[data-cf-os="android"] — the ATTRIBUTE (never a class)
+   that native/App.js:1714 plants on <html> before anything
+   loads, the same hook webapp/native.css:79 already uses for
+   iOS. In a plain browser the attribute is absent, so none of
+   this applies to chronicfriends.app on a desktop either.
+
+   The cause, measured in audit/android-widths-2026-08-29.html:
+   the app is drawn for a 393px iPhone inside a fixed 393px
+   `.phone` frame. On a real handset native.css releases that
+   frame to the screen, and with html{zoom:1.2} (styles.css:35)
+   the layout width becomes deviceWidth / 1.2 —
+       iPhone 15 Pro 393px → 327.5 css px  ← what the design
+                                             really gets today
+       Android       360px → 300   css px  (8% less)
+       Android       320px → 267   css px  (19% less)
+   so everything measured for the iPhone runs out of room, the
+   inherited overflow-wrap:break-word splits words in half, and
+   the inherited line-height:2 makes each split cost three lines
+   of height. That is how «teléfono» became «teléfon / o» and
+   how «Registro» became «ro» inside a 68px button.
+   ============================================================ */
+
+/* A2 — THE WIDTH INVARIANT: an Android screen may never lay out
+   NARROWER than the iPhone's 327.5 css px.
+   The brief proposed font clamps. They would have been close to
+   a no-op here: nearly every size in this app is an INLINE px
+   style, and a stylesheet rule cannot beat an inline one without
+   !important, which is forbidden project-wide (CLAUDE.md →
+   Responsive rules). `zoom` can: it scales the used value of
+   every length, inline ones included, and it is already the
+   mechanism the app ships with. So instead of shrinking text
+   element by element, each Android width class takes one step
+   off the 1.2 zoom until the width comes back:
+       device px   zoom   layout width   vs iPhone 327.5
+       412+        1.20   343            wider
+       380-392     1.15   330-341        wider
+       360-379     1.09   330-348        wider
+       340-359     1.03   330-349        wider
+       320-339     0.97   330-349        wider
+       300-319     0.91   330-351        wider
+       280-299     0.85   329-352        wider
+   Below 280px (a folded cover screen) the invariant no longer
+   holds — add the next step if such a device ever shows up.
+   The text ends up physically smaller than on the iPhone (8% at
+   360px, 19% at 320px) and that is the trade the brief asked
+   for: «no hace falta que quede idéntico al iPhone: hace falta
+   que se lea entero y no se corte». Media queries and `zoom`
+   are independent — a query still sees the real device width
+   (verified in the harness), so there is no feedback loop.
+   --cf-ac carries 1.2/zoom for the few places where a PHYSICAL
+   measurement has to be restored. */
+html[data-cf-os="android"]{--cf-az:1.2;--cf-ac:calc(1.2 / var(--cf-az));}
+@media (max-width:392px){html[data-cf-os="android"]{zoom:1.15;--cf-az:1.15;}}
+@media (max-width:379px){html[data-cf-os="android"]{zoom:1.09;--cf-az:1.09;}}
+@media (max-width:359px){html[data-cf-os="android"]{zoom:1.03;--cf-az:1.03;}}
+@media (max-width:339px){html[data-cf-os="android"]{zoom:.97;--cf-az:.97;}}
+@media (max-width:319px){html[data-cf-os="android"]{zoom:.91;--cf-az:.91;}}
+@media (max-width:299px){html[data-cf-os="android"]{zoom:.85;--cf-az:.85;}}
+
+/* DEVOLUCIÓN-2 30 Aug 2026 §5.2 — DELETED, and it stays deleted.
+   A `html[data-cf-os="android"] .tabbar{padding-bottom:…}` rule
+   lived here to keep the bar's physical clearance over the
+   Android navigation bar against the zoom above. Production
+   never had it, webapp/native.css wins it with !important, so it
+   did nothing at all today — but if that !important were ever
+   removed it would come back to life on its own and nobody would
+   be expecting it. The Android clearance belongs to native.css
+   alone; the only `.tabbar` rule this file still carries is R6's
+   safe-area line above, which is untouched. */
+
+/* A3 — normal line spacing. `.stage` carries line-height:2 as an
+   inline style (app.jsx:175) and everything that never set its
+   own inherits it: a label that wraps to two lines then costs
+   four lines of height, which is what pushed «Registro» out of
+   its own button. Anything with a line-height of its own (manual
+   paragraphs, `.doc-body` legal text, card copy) is untouched —
+   a rule always beats an inherited value. */
+html[data-cf-os="android"] .screen{line-height:1.45;}
+
+/* A5 — the Home Check-In button (screens.jsx, HomeScreen). The
+   two label sizes moved out of the inline style into these two
+   classes with the SAME numbers, so the iPhone renders the same
+   pixels and Android has something it can override without
+   !important. Android takes one notch off the label, the icon
+   box and the side padding so the longest of the 16 languages
+   («Sin completar», „Nicht abgeschlossen“) fits beside the
+   reminder bell at 320px, and still fits with the system text
+   15% larger. The button also gained a min-height instead of a
+   fixed height (screens.jsx): a second line can no longer be
+   cut off by its own overflow:hidden.
+   `gap` and `padding` sit here too, with the SAME values the
+   inline style carried — an inline declaration cannot be
+   overridden without !important, so a base value that Android
+   needs to change has to live in the class. */
+.cf-ckin{gap:13px;padding:0 16px;}
+.cf-ckin-t{font-size:15px;}
+.cf-ckin-s{font-size:12px;}
+html[data-cf-os="android"] .cf-ckin{gap:10px;padding:0 13px;}
+html[data-cf-os="android"] .cf-ckin .badge-ic{width:40px;height:40px;border-radius:14px;}
+html[data-cf-os="android"] .cf-ckin-t{font-size:14px;line-height:1.25;}
+html[data-cf-os="android"] .cf-ckin-s{font-size:11.5px;line-height:1.25;}
+
+/* A4 — a row of «text + button» gives way at the BUTTON, never
+   by squeezing the text to one letter per line. The case in the
+   capture is stepsboard.jsx `SbConnectBanner` («Los pasos vienen
+   de tu teléfono» + Conectar). `flex:none` and `min-width:0`
+   moved off the inline styles (same values) so Android can let
+   the button shrink and give the text a floor; when the pair no
+   longer fits, the button drops to the next line at its natural
+   width — deliberately NOT stretched full width: a wide pill in
+   the middle of the sheet would read as the sheet's primary
+   action, which it is not. */
+.sb-connbar-txt{flex:1 1 0%;min-width:0;}
+.sb-connbar-btn{flex:none;}
+html[data-cf-os="android"] .sb-connbar{flex-wrap:wrap;row-gap:9px;}
+html[data-cf-os="android"] .sb-connbar-txt{min-width:120px;}
+html[data-cf-os="android"] .sb-connbar-btn{flex:0 1 auto;min-width:0;white-space:nowrap;}
+
+/* A7 (the sweep) — the one place the 320/360/412 × ca·es·de·ar pass still
+   found a word that would split, and only with the system text at 115%: the
+   focused-signal header of My Flare Radar, where «Medicación» / „Medikation“
+   needed 101px in a 96px column. The room comes from the percentage column,
+   which never needs more than 40px — nothing a patient reads gets smaller.
+   The name itself must never be hyphen-split: a condition or a medicine cut
+   in half is unreadable in any language. */
+html[data-cf-os="android"] .mfr-fhead{gap:9px;}
+html[data-cf-os="android"] .mfr-fmetric{min-width:42px;}
+html[data-cf-os="android"] .mfr-fhead .fr-pri-name{font-size:14px;}
