@@ -1444,7 +1444,23 @@ html[lang="ca"] .fr-title{font-size:15px;line-height:1.16;}
    =================================================================== */
 .ckf-ov{position:absolute;inset:0;border-radius:42px;overflow:hidden;z-index:145;display:flex;flex-direction:column;
   background:radial-gradient(130% 110% at 50% 0%,#0a9a48 0%,#04823b 52%,#036830 100%);animation:bdIn .22s ease;}
-.ckf-top{display:flex;align-items:center;gap:10px;padding:22px 18px 0;flex:none;}
+/* 🔴 SAFE AREA (9 Sep 2026, Gerhard on 1.0.4 build 40 via TestFlight). The
+   flow is the first screen in the app that reaches the very top of the phone
+   clean: .ckf-ov is inset:0, so it starts at y=0, where the phone draws its
+   status bar. With 14 px of fixed air the counter «4 / 15» came out under the
+   clock and the 5G icon, and the back arrow under the system's «◀ TestFlight»
+   (a Dynamic Island status bar is 59 px, so the first 45 px of the header were
+   covered). Every other full-screen surface in the app hardcodes a generous
+   48-52 px top pad (.gm-head · .vc-topbar · .pdf-topbar · the Home welcome
+   bar), which is why only this one showed it.
+   🪤 --cf-sat, NOT env(safe-area-inset-top): inside the Android WebView env()
+   is 0 even with viewport-fit=cover — the trap that already bit the bottom
+   edge. The real measure is injected on <html> by native/App.js from
+   useSafeAreaInsets(), divided by the zoom. env() stays as the fallback for
+   the desktop browser, where it does work. The 14 px of air are kept: on a
+   device with no status bar the value is 0 and the header is exactly as it
+   was drawn. */
+.ckf-top{display:flex;align-items:center;gap:10px;padding:calc(14px + var(--cf-sat, env(safe-area-inset-top, 0px))) 18px 0;flex:none;}
 .ckf-ic{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;flex:none;
   background:rgba(255,255,255,.14);color:#eafde3;display:flex;align-items:center;justify-content:center;}
 .ckf-bar{flex:1 1 auto;min-width:52px;height:6px;border-radius:4px;background:rgba(255,255,255,.22);overflow:hidden;}
@@ -1502,6 +1518,45 @@ html[lang="ca"] .fr-title{font-size:15px;line-height:1.16;}
    and it is inherited: without this, «Recordatori» broke as «Recordato/ri» in
    the reminder rows. A word is never split — the row wraps between words. */
 .ckf-lbl{overflow-wrap:normal;word-break:normal;hyphens:none;}
+/* CKREM (9 Sep 2026) — «Journal reminder» spilled OVER the time pill in 8 of
+   the 16 languages (measured at 430×932: ru +42 px · es +26 · it +23 · ca +17
+   · tr +16 · de +14 · id +7 · pt +1). The label was flex:1 with min-width:0,
+   so the row squeezed it to 79 px — narrower than its own first word — and
+   the rule above (rightly) never splits a word, so there was nowhere to wrap.
+   🔴 The fix is NOT to let the word break again («Recordato/ri» was the bug
+   we fixed the day before): the ROW gives way, not the text. The label can no
+   longer be squeezed below its own longest word, and the time + switch drop to
+   a second line when what is left is not enough. Measured on the shipped
+   build in all 16 languages (audit/ckrem-row-width-2026-09-09.html, 48 panes,
+   0 failures): at 430 pt every language now fits on ONE line (label 108 px,
+   nothing overflows); at 393 pt es · ca · de · it · tr · ru take the second
+   line and the other ten keep the row exactly as it is today (label 77 px —
+   the 79 px the founder measured); at 320 pt every language wraps.
+   Both twins wear this class: the first line of the Journal tab
+   (checkinreminder.jsx) and the Settings row (settings.jsx) — one decision,
+   two places, per the CKREM rule.
+   The acceptance test is a measurement, not an eye: .ckf-lbl must satisfy
+   scrollWidth <= clientWidth in all 16 languages.
+   🪤 The two numbers are a PAIR, and each one answers a different failure.
+   · min-width:min-content — the label can never be squeezed below its longest
+     WORD, which is what spilled the text over the pill. The bound is the
+     word, not the whole string: in English the label already wraps between
+     its two words («Journal» / «reminder» — the 66 px they measured), so a
+     max-content bound would have pushed the time + switch to a second row in
+     all 16 languages and grown every card by ~30 px.
+   · flex-basis:5em — a wrapping flex container decides its line breaks from
+     each item's basis (clamped by min-width), NOT from min-width alone, so
+     the basis is what actually moves the controls to line two. 5em is also a
+     floor for the languages whose longest «word» is one character: Chinese,
+     Japanese and Korean break anywhere, so their min-content is ~17 px and on
+     a 320 pt phone the label used to be squeezed into a one-character
+     vertical strip (it does that today too). Below about five characters a
+     label is not a label any more: there, the row wraps instead.
+   Plain px in the shorthand on purpose — no intrinsic keyword in `flex`, so
+   there is nothing for an older WebView to fail to parse. */
+.ckrem-row{flex-wrap:wrap;}
+.ckrem-row>.ckf-lbl{flex:1 1 5em;min-width:-webkit-min-content;min-width:min-content;}
+.ckrem-row>.ckrem-ctl{flex:none;display:flex;align-items:center;gap:10px;margin-inline-start:auto;}
 .ckf-hint{font-size:12px;font-weight:600;color:var(--muted-2);text-align:center;text-wrap:pretty;}
 .ckf-hsline{font-size:15px;font-weight:700;color:var(--ink-soft);line-height:1.5;text-align:center;text-wrap:pretty;padding:2px 4px 4px;}
 .ckf-foot{margin-top:auto;display:flex;flex-direction:column;gap:9px;flex:none;max-width:340px;width:100%;margin-inline:auto;}
@@ -1509,7 +1564,50 @@ html[lang="ca"] .fr-title{font-size:15px;line-height:1.16;}
   background:rgba(60,90,60,.08);border-radius:22px;padding:15px;}
 .ckf-quiet{border:none;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px;color:var(--muted);
   background:none;padding:8px 4px;text-align:center;}
+/* ===================================================================
+   THE GROUPED SCREENS (8 Sep 2026) — the Journal tab's own cards
+   inside the flow. The sheet stops being a centred column of options
+   and gives the cards the journal's own side padding, so a group in
+   the flow and the same group in the Journal tab are the same picture.
+   =================================================================== */
+.ckf-sheet.ckf-group{padding:12px 14px 14px;gap:8px;}
+/* The fit area. Every group is cut so that its screen fits the 393×852
+   frame this app is drawn for; the hidden overflow here is a SAFETY NET
+   for a shorter phone or a language that wraps twice — a question
+   nobody can reach would be far worse than a scroll nobody needs.
+   A screen with few questions used to pin its card to the top and leave
+   half a screen empty above the button (Gerhard, 9 Sep: «leave more room at
+   the top and centre it more»), so the leftover room is now split above and
+   below the cards.
+   🪤 `safe center`, never bare `center`: in a scroll container a normal
+   centre clips at the top as soon as the content overflows, and what got cut
+   can no longer be scrolled to. `safe` centres the leftover space and
+   behaves as flex-start the moment there is none. And NOT margin-block:auto
+   on the children either — the !important rule below (which kills the last
+   card's 16 px of dead space) beats an auto bottom margin, so the room all
+   piles up at the top. Measured, not guessed. */
+.ckf-body{flex:1 1 auto;min-width:0;min-height:0;overflow-y:auto;overflow-x:hidden;
+  display:flex;flex-direction:column;justify-content:safe center;
+  -webkit-overflow-scrolling:touch;overscroll-behavior:contain;animation:ckfIn .16s ease-out;}
+/* 🔴 The last card's trailing margin is DEAD SPACE inside the fit area: the
+   journal's cards carry an inline margin-bottom:16px because in the Journal
+   tab another card follows them, and here nothing does. Those 16 px were the
+   difference between fitting and not on «TV · Cigarettes? · Alcohol? ·
+   Substances used?» (8 px over in English, more in German, French and
+   Italian, where the pills wrap another line). `!important` because the 16 px
+   is an inline style and no stylesheet beats it otherwise. */
+.ckf-body>.card-solid:last-child{margin-bottom:0!important;}
+/* 🪤 ...and now that .ckf-body is a flex column (the centring above), its
+   children must NEVER shrink. A flex item shrinks by default when its line is
+   too short, so on the screens that DO overflow — the safety-net case the
+   comment above exists for — the cards would have been squashed under their
+   own text instead of the body scrolling. flex:none keeps every card at its
+   content height and leaves the overflow to the scroller. */
+.ckf-body>*{flex:none;}
+/* the body map, alone on its screen: never taller than the room it has */
+.ckf-map svg{max-height:44vh;}
 @media (prefers-reduced-motion: reduce){
+  .ckf-body{animation:none;}
   .ckf-ov,.ckf-q,.ckf-sheet{animation:none;}
   .ckf-bar i{transition:none;}
   .ckf-opt{transition:none;}

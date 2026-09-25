@@ -8,16 +8,33 @@
    condition → module → tracker matrix (derived live from
    SM_CONDITIONS in modules.jsx, never duplicated).
 
-   TWO COMPONENTS RENDER THE SAME QUESTIONS (7 Sep 2026). Every 'question'
-   item below is asked in two places: the Journal form (checkin.jsx /
-   modcheckin.jsx, the per-item sourceComponent) and the evening flow
-   (checkinflow.jsx), one question per screen. The flow declares NO item of
-   its own on purpose — it adds no field and no dataPath, it only asks what
-   is already declared here. The five 'text' items (core.painNote and the
-   four tracker notes) are the exception: they are NOT in the flow, which
-   never opens a keyboard.
+   TWO COMPONENTS RENDER THE SAME QUESTIONS (7 Sep 2026, re-shaped
+   8 Sep 2026). Every 'question' item below is asked in two places: the
+   Journal form (checkin.jsx / modcheckin.jsx, the per-item
+   sourceComponent) and the evening flow (checkinflow.jsx), which since
+   8 Sep shows them GROUPED — 10 to 15 screens, one per group of the
+   Journal tab, drawn with the Journal tab's own components
+   (checkinflowrows.jsx). The flow declares NO item of its own on
+   purpose — it adds no field and no dataPath, it only asks what is
+   already declared here — so resolveUnifiedTracker can keep resolving
+   it from these questions. The five 'text' items (core.painNote and
+   the four tracker notes) are in the flow too, on the screen of their
+   group, optional and never blocking; the keyboard only ever opens if
+   the person taps one.
    The 'core.copyYesterday' tool («Same routine as yesterday?») was DELETED
    the same day, with the button itself: never re-declare it.
+
+   🔴 FIVE QUESTIONS ARE ASKED ONCE (the poda, 8 Sep 2026). They are
+   still declared, with `asked: 'once'` + `mirrorFrom`, because their
+   FIELD is still written on every day their measure is answered
+   (cfJournalMirror in canonicalfanout.jsx) and every chart, radar and
+   PDF still reads it. What changed is that no component renders the
+   row any more: musc.mjPain and pelvic.pvPain are core.pain,
+   mind.mdWeather is core.mindset, mind.mdSteady is mind.clean, and
+   core.love belongs to whoever does NOT carry the Mind tracker (with
+   it on, mind.mdConnect is the question). A registry that showed them
+   as rendered would send a patient looking for a row that no longer
+   exists.
 
    PURELY ADDITIVE, ZERO BEHAVIOR: this file only defines data and
    pure lookup helpers on window. Nothing reads it yet (that is
@@ -35,12 +52,281 @@
      status 'candidate' = flagged, NEVER merged without Gerhard's
      approval (brief §13.5, D8).
    • flareMode:true = Flare Mode micro-log item. Mapping only.
-   =================================================================== *//* @typedef TrackerItem {itemId,type:'question'|'tool'|'log'|'graphic',
+   =================================================================== */
+
+/* @typedef TrackerItem {itemId,type:'question'|'tool'|'log'|'graphic',
      inputType?,i18nKey,dataPath,sourceComponent,canonicalKey?,
-     flareMode?,gate?,options?,note?} */function rgIt(itemId,type,inputType,i18nKey,dataPath,sourceComponent,x){return Object.assign({itemId,type,inputType,i18nKey,dataPath,sourceComponent},x||{});}const RG_CK='cf-checkins[d].';/* the shared per-day journal record */const RG_ML='cf_modlogs_v1.';/* tracker tools & logs store */const RG_FL='cf_flaremode_log_v1[d].';/* flare micro-log (READ-ONLY map) */const CF_TRACKER_REGISTRY=[/* ---------------- DIGESTION + core daily essentials ---------------- */{trackerId:'dig.core',moduleId:'dig',displayOrder:0,sourceComponent:'checkin.jsx + checkinflow.jsx',sections:[{sectionId:'core.essentials',i18nTitleKey:'How do you feel?',items:[rgIt('core.pain','question','scale','Pain Level',RG_CK+'pain','checkin.jsx',{canonicalKey:'pain.overall'}),rgIt('core.painNote','question','text','Note',RG_CK+'painNote','checkin.jsx'),rgIt('core.energy','question','scale','Energy Level',RG_CK+'energy','checkin.jsx',{canonicalKey:'energy.level'}),rgIt('core.pulse','question','scale','All things considered, how was your day?',RG_CK+'pulse','checkinpulse.jsx',{note:"[CKREM] condition-adapted one-tap question (CKQ_BY_CONDITION); stored values 'Good day'/'Tough day'; day-specific — excluded from copy-yesterday",options:['Tough day','Good day']})]},{sectionId:'core.sym',i18nTitleKey:'Symptoms',items:[rgIt('core.flare','question','boolean','Having a flare-up?',RG_CK+'flare','checkin.jsx',{canonicalKey:'flare.state'}),rgIt('core.flareTypes','question','multiselect','Having a flare-up?',RG_CK+'flareTypes','checkin.jsx',{note:'sub-chips of flare'}),rgIt('core.bowel','question','scale','Bowel mov. today?',RG_CK+'bowel','checkin.jsx',{canonicalKey:'bowel.frequency',options:['0–2','2–4','4–6','+6']}),rgIt('core.water','question','scale','Water drunk today?',RG_CK+'water','checkin.jsx',{canonicalKey:'hydration.volume',options:['<0.5L','0.5–1L','1–2L','+2L']}),rgIt('core.sleep','question','scale','Hours of sleep last night?',RG_CK+'sleep','checkin.jsx',{canonicalKey:'sleep.duration',options:['<5h','5–7h','7–9h','+9h'],syncWriters:['healthsync']}),rgIt('dig.digCtx','question','multiselect','Context (your conditions)',RG_CK+'digCtx','modcheckin.jsx',{gate:'condition-context chips (SM_DIG_CTX)'}),rgIt('dig.digGas','question','boolean','Gas or bloating today?',RG_CK+'digGas','modcheckin.jsx')]},{sectionId:'core.life',i18nTitleKey:'Lifestyle',items:[rgIt('core.move','question','scale','Activity level?',RG_CK+'move','checkin.jsx'),rgIt('core.steps','question','scale','Steps done today?',RG_CK+'steps','checkin.jsx',{canonicalKey:'steps.count',syncWriters:['healthsync']}),rgIt('core.nature','question','boolean','Time in nature?',RG_CK+'nature','checkin.jsx'),rgIt('core.animals','question','scale','Time with animals',RG_CK+'animals','checkin.jsx'),rgIt('core.sunlight','question','scale','Sun exposure?',RG_CK+'sunlight','checkin.jsx'),rgIt('core.sunProtect','question','boolean',null,RG_CK+'sunProtect','checkin.jsx',{note:'conditional sub-question of sunlight'}),rgIt('core.tv','question','scale','TV, social media or video games',RG_CK+'tv','checkin.jsx'),rgIt('core.tobacco','question','scale','Cigarettes today?',RG_CK+'tobacco','checkin.jsx'),rgIt('core.alcohol','question','scale','Alcohol today?',RG_CK+'alcohol','checkin.jsx'),rgIt('core.subst','question','multiselect','Substances used today?',RG_CK+'subst','checkin.jsx',{note:'multi-select; normalize with cfSubstArr()'})]},{sectionId:'core.mind',i18nTitleKey:'Mind & connection',items:[rgIt('core.mindset','question','scale','Your mindset today?',RG_CK+'mindset','checkin.jsx',{canonicalKey:'mood.tone'}),rgIt('core.love','question','boolean','Time with loved ones today?',RG_CK+'love','checkin.jsx'),rgIt('core.toxic','question','boolean','Toxic people around today?',RG_CK+'toxic','checkin.jsx'),rgIt('core.meditate','question','boolean','Have you meditated today?',RG_CK+'meditate','checkin.jsx'),rgIt('core.relaxed','question','boolean','Have you been relaxed today?',RG_CK+'relaxed','checkin.jsx'),rgIt('core.music','question','boolean','Did you listen to music today?',RG_CK+'music','checkin.jsx'),rgIt('core.sing','question','boolean','Have you sung today?',RG_CK+'sing','checkin.jsx'),rgIt('core.dance','question','boolean','Have you danced today?',RG_CK+'dance','checkin.jsx')]},{sectionId:'core.logs',i18nTitleKey:'Tools & logs',items:[rgIt('core.foodlog','log',null,'Food journal','cf-foodlog[d][]','checkin.jsx'),rgIt('core.medlog','log',null,'Medication','cf_meds_v3 + cf_taken_v2 (read via medstate.jsx cfDoseState)','medjournal.jsx',{note:'read-only day card — resolved doses on their SCHEDULED day; unlogged/snoozed render nothing; no copies/caches'})]},{sectionId:'core.gfx',i18nTitleKey:'Analytics',items:[rgIt('core.gfx.calendar','graphic',null,'Daily Journal','cf-checkins','checkin.jsx',{note:'check-in calendar day tones + cyan flare days (flaresync)'}),rgIt('core.gfx.charts','graphic',null,'Analytics','cf-checkins','checkin.jsx',{chartKeys:['health','pain','energy','flare','bowel','water','sleep','move','steps','nature','animals','sunlight','tv','tobacco','alcohol','subst','mindset','love','toxic','meditate','relaxed','music','sing','dance','digGas','pulse']}),rgIt('core.gfx.radar','graphic',null,'My Flare Radar','cf-checkins + cf_flaremode_log_v1','flareradar.jsx',{note:'READ-ONLY consumer — never modified'}),rgIt('core.gfx.pdf','graphic',null,'Download PDF','cf-checkins + cf-foodlog + cf_meds_v3','checkin.jsx',{gate:'premium (PremiumGateModal) — unchanged'})]}]},/* ---------------- MUSCLES & JOINTS ---------------- */{trackerId:'musc.tracker',moduleId:'musc',displayOrder:1,sourceComponent:'modcheckin.jsx + modscreens.jsx',sections:[{sectionId:'musc.q',i18nTitleKey:'Muscles & Joints',items:[rgIt('musc.mjPain','question','scale','Joint & muscle pain today',RG_CK+'mjPain','modcheckin.jsx',{note:'localized pain — NEVER merged with core.pain (different clinical meaning)'}),rgIt('musc.mjStiff','question','scale','Morning stiffness lasted…',RG_CK+'mjStiff','modcheckin.jsx',{canonicalKey:'stiffness.morning',options:['None','<15 min','15–60 min','>1 h']}),rgIt('musc.mjMobility','question','scale','How does your body move today?',RG_CK+'mjMobility','modcheckin.jsx'),rgIt('musc.mjZones','question','multiselect','Where do you feel it?',RG_CK+'mjZones','modcheckin.jsx')]},{sectionId:'musc.tools',i18nTitleKey:'Tools & logs',items:[rgIt('musc.tool.bodymap','log',null,'Body map',RG_ML+'zones.pain','bodymap.jsx'),rgIt('musc.tool.unlock','log','scale','Morning unlock',RG_ML+'unlock','modscreens.jsx',{canonicalKey:'stiffness.morning',options:['None','<15 min','15–60 min','>1 h']}),rgIt('musc.tool.routines','tool',null,'Gentle routines',RG_ML+"moments[type='move_musc'|'rest_musc']",'modscreens.jsx')]},{sectionId:'musc.gfx',i18nTitleKey:'Analytics',items:[rgIt('musc.gfx.charts','graphic',null,'Analytics','cf-checkins','modanalytics.jsx',{chartKeys:['mjPain','mjStiff','mjMobility']}),rgIt('musc.gfx.radar','graphic',null,'Joints & muscles','cf-checkins + cf_modlogs_v1.zones.pain','modules.jsx',{note:'radar axis; zone-blended'})]}]},/* ---------------- EYES ---------------- */{trackerId:'eyes.tracker',moduleId:'eyes',displayOrder:2,sourceComponent:'modcheckin.jsx + modscreens.jsx',sections:[{sectionId:'eyes.q',i18nTitleKey:'Eyes',items:[rgIt('eyes.eyeDry','question','scale','Eye dryness',RG_CK+'eyeDry','modcheckin.jsx'),rgIt('eyes.eyeLight','question','scale','Light sensitivity',RG_CK+'eyeLight','modcheckin.jsx'),rgIt('eyes.eyeChips','question','multiselect','Anything else today?',RG_CK+'eyeChips','modcheckin.jsx'),rgIt('eyes.eyeNote','question','text','Note',RG_CK+'eyeNote','modcheckin.jsx')]},{sectionId:'eyes.tools',i18nTitleKey:'Tools & logs',items:[rgIt('eyes.tool.episodes','log',null,'Episode Log',RG_ML+'episodes[]','modscreens.jsx',{note:'[UVE2] {start, end|null, side?, endNote?} — side & how it ended are optional and never defaulted; report shows up to 12'}),rgIt('eyes.tool.drops','tool','boolean',null,'cf_modules_v1.cfg.dropReminder','modscreens.jsx',{note:'Drop Companion reminder toggle'})]},{sectionId:'eyes.gfx',i18nTitleKey:'Analytics',items:[rgIt('eyes.gfx.charts','graphic',null,'Analytics','cf-checkins','modanalytics.jsx',{chartKeys:['eyeDry','eyeLight']}),rgIt('eyes.gfx.chips','graphic',null,'Anything else today?',RG_CK+'eyeChips','modanalytics.jsx',{note:'[UVE1] chip counts + notes in Analytics and the PDF — generic SM_CHIP_PARAMS block (SMChipSummary)'}),rgIt('eyes.gfx.radar','graphic',null,'Eye comfort','cf-checkins + cf_modlogs_v1.episodes','modules.jsx'),rgIt('eyes.gfx.radar2','graphic',null,'Light sensitivity',RG_CK+'eyeLight','modules.jsx',{note:'[UVE1] own radar axis (SM_RADAR_DEFS), appears once logged'})]}]},/* ---------------- SKIN & MOUTH ---------------- */{trackerId:'skin.tracker',moduleId:'skin',displayOrder:3,sourceComponent:'modcheckin.jsx + modscreens2.jsx',sections:[{sectionId:'skin.q',i18nTitleKey:'Skin & Mouth',items:[rgIt('skin.skItch','question','scale','Itch today',RG_CK+'skItch','modcheckin.jsx'),rgIt('skin.skChips','question','multiselect','Anything new or changed?',RG_CK+'skChips','modcheckin.jsx',{canonicalKey:'mouth.ulcers',note:"only the 'Mouth ulcer' chip participates"}),rgIt('skin.skNote','question','text','Note',RG_CK+'skNote','modcheckin.jsx')]},{sectionId:'skin.tools',i18nTitleKey:'Tools & logs',items:[rgIt('skin.tool.bodymap','log',null,'Body map',RG_ML+'zones.skin','bodymap.jsx'),rgIt('skin.tool.mouth','log','counter',null,RG_ML+'mouth[]','modscreens2.jsx',{canonicalKey:'mouth.ulcers',note:'mouth-spot map (region + count)'})]},{sectionId:'skin.gfx',i18nTitleKey:'Analytics',items:[rgIt('skin.gfx.charts','graphic',null,'Analytics','cf-checkins','modanalytics.jsx',{chartKeys:['skItch']}),rgIt('skin.gfx.radar','graphic',null,'Skin & mouth','cf-checkins + cf_modlogs_v1.zones.skin','modules.jsx')]}]},/* ---------------- PELVIC HEALTH ---------------- */{trackerId:'pelvic.tracker',moduleId:'pelvic',displayOrder:4,sourceComponent:'modcheckin.jsx + modscreens2.jsx',sections:[{sectionId:'pelvic.q',i18nTitleKey:'Pelvic Health',items:[rgIt('pelvic.pvPain','question','scale','Pelvic pain today',RG_CK+'pvPain','modcheckin.jsx',{note:'localized — never merged with core.pain'}),rgIt('pelvic.pvBleed','question','scale','Bleeding today?',RG_CK+'pvBleed','modcheckin.jsx',{canonicalKey:'cycle.flow',options:['None','Spotting','Normal','Heavy']}),rgIt('pelvic.pvUrin','question','multiselect','Bathroom comfort',RG_CK+'pvUrin','modcheckin.jsx'),rgIt('pelvic.pvSpasm','question','boolean','Pelvic spasms?',RG_CK+'pvSpasm','modcheckin.jsx'),rgIt('pelvic.pvNote','question','text','Note',RG_CK+'pvNote','modcheckin.jsx')]},{sectionId:'pelvic.tools',i18nTitleKey:'Tools & logs',items:[rgIt('pelvic.tool.bodymap','log',null,'Body map',RG_ML+'zones.pelvic','bodymap.jsx'),rgIt('pelvic.tool.cycle','log',null,'Cycle Companion',RG_ML+'cycle','modscreens2.jsx',{canonicalKey:'cycle.flow',options:['Spotting','Normal','Heavy']})]},{sectionId:'pelvic.gfx',i18nTitleKey:'Analytics',items:[rgIt('pelvic.gfx.charts','graphic',null,'Analytics','cf-checkins','modanalytics.jsx',{chartKeys:['pvPain','pvBleed']}),rgIt('pelvic.gfx.radar','graphic',null,'Pelvic comfort','cf-checkins + cf_modlogs_v1.zones.pelvic','modules.jsx')]}]},/* ---------------- BREATH & HEART ---------------- */{trackerId:'breath.tracker',moduleId:'breath',displayOrder:5,sourceComponent:'modcheckin.jsx + modscreens3.jsx',sections:[{sectionId:'breath.q',i18nTitleKey:'Breath & Heart',items:[rgIt('breath.bhBreath','question','scale','How did breathing feel today?',RG_CK+'bhBreath','modcheckin.jsx'),rgIt('breath.bhCtx','question','multiselect','Noticed when…',RG_CK+'bhCtx','modcheckin.jsx'),rgIt('breath.bhCough','question','scale','Cough today?',RG_CK+'bhCough','modcheckin.jsx'),rgIt('breath.bhChips','question','multiselect','Also felt…',RG_CK+'bhChips','modcheckin.jsx'),rgIt('breath.bhReliever','question','counter','Reliever inhaler used today',RG_CK+'bhReliever','modcheckin.jsx')]},{sectionId:'breath.tools',i18nTitleKey:'Tools & logs',items:[rgIt('breath.tool.bp','log','number',null,RG_ML+"readings[type='bp']",'readingslog.jsx',{note:'user-typed, display-only, no ranges/zones ever'}),rgIt('breath.tool.peak','log','number',null,RG_ML+"readings[type='peak']",'readingslog.jsx'),rgIt('breath.tool.breathe','tool',null,null,RG_ML+"moments[type='breathe'|'rest_breath']",'modscreens3.jsx',{note:'breathing exercises + equal-credit rest'}),rgIt('breath.tool.inhaler','tool','boolean',null,'cf_modules_v1.cfg.inhalerReminder','modscreens3.jsx')]},{sectionId:'breath.gfx',i18nTitleKey:'Analytics',items:[rgIt('breath.gfx.charts','graphic',null,'Analytics','cf-checkins','modanalytics.jsx',{chartKeys:['bhBreath','bhCough','bhReliever']}),rgIt('breath.gfx.radar','graphic',null,'Breathing','cf-checkins','modules.jsx')]}]},/* ---------------- MIND & MOOD (≙ the Greenhouse) ---------------- */{trackerId:'mind.tracker',moduleId:'mind',displayOrder:6,sourceComponent:'modcheckin.jsx + mindmod.jsx',sections:[{sectionId:'mind.q',i18nTitleKey:'Mind & Mood',items:[rgIt('mind.mdWeather','question','scale','Your inner weather today',RG_CK+'mdWeather','modcheckin.jsx',{canonicalKey:'mood.tone',options:['Sunny','Partly cloudy','Cloudy','Rainy','Stormy']}),rgIt('mind.mdWorry','question','scale','Worry & anxiety level',RG_CK+'mdWorry','modcheckin.jsx'),rgIt('mind.mdConnect','question','scale','Time with people today?',RG_CK+'mdConnect','modcheckin.jsx'),rgIt('mind.mdSwing','question','scale','Mood dial — where did it sit?',RG_CK+'mdSwing','modcheckin.jsx',{gate:'smMindGates().swing (Bipolar disorder)'}),rgIt('mind.mdUrge','question','scale','Urges or cravings today?',RG_CK+'mdUrge','modcheckin.jsx',{gate:'smMindGates().urges (Alcohol/Substance use disorder)',note:'craving — never merged with core.subst (use)'}),rgIt('mind.mdSteady','question','boolean','How did the day go?',RG_CK+'mdSteady','modcheckin.jsx',{gate:'smMindGates().urges'}),rgIt('mind.clean','question','boolean','Did you drink today?',RG_CK+'clean','checkinpulse.jsx',{gate:'urges conditions (AUD/SUD)',options:['Slip','Clean'],note:"[CKREM] clean-day one-tap question; streak + lifetime total in the card; NEVER merged with core.subst/alcohol (those log amounts); excluded from copy-yesterday"}),rgIt('mind.mdFocus','question','scale','Focus today',RG_CK+'mdFocus','modcheckin.jsx',{gate:'smMindGates().focus (ADHD)'}),rgIt('mind.mdChips','question','multiselect','Your mind also felt…',RG_CK+'mdChips','modcheckin.jsx'),rgIt('mind.mdNote','question','text','Note',RG_CK+'mdNote','modcheckin.jsx')]},{sectionId:'mind.gfx',i18nTitleKey:'Analytics',items:[rgIt('mind.gfx.charts','graphic',null,'Analytics','cf-checkins','modanalytics.jsx',{chartKeys:['mdWeather','mdWorry','mdSwing','mdUrge','mdFocus','mdConnect','clean']}),rgIt('mind.gfx.radar','graphic',null,'Mind & mood','cf-checkins','modules.jsx')]}]},/* ---------------- ENERGY & REST (always on, always LAST) ---------------- */{trackerId:'univ.tracker',moduleId:'univ',displayOrder:7,alwaysOn:true,pinnedLast:true,sourceComponent:'modcheckin.jsx + modscreens3.jsx',sections:[{sectionId:'univ.q',i18nTitleKey:'Energy & Rest',items:[/* energy / sleep / mindset are DEDUPED to core fields — asked once, never twice */rgIt('univ.enFog','question','scale','Head today?',RG_CK+'enFog','modcheckin.jsx'),rgIt('univ.enDizzy','question','counter','Dizzy on standing today?',RG_CK+'enDizzy','modcheckin.jsx'),rgIt('univ.enChips','question','multiselect','Also today…',RG_CK+'enChips','modcheckin.jsx')]},{sectionId:'univ.tools',i18nTitleKey:'Tools & logs',items:[rgIt('univ.tool.battery','tool','scale',null,RG_CK+'energy','modscreens3.jsx',{canonicalKey:'energy.level',note:'Battery/Spoons — a presentation of the existing energy field'}),rgIt('univ.tool.pacing','log','text',null,RG_ML+'pacing','modscreens3.jsx',{note:'pacing planner (activity/rest blocks)'}),rgIt('univ.tool.glucose','log','number',null,RG_ML+"readings[type='glu']",'readingslog.jsx',{gate:'cf_modules_v1.cfg.glucose (Diabetes)'})]},{sectionId:'univ.gfx',i18nTitleKey:'Analytics',items:[rgIt('univ.gfx.charts','graphic',null,'Analytics','cf-checkins','modanalytics.jsx',{chartKeys:['enFog','enDizzy']}),rgIt('univ.gfx.radar','graphic',null,'Brain fog','cf-checkins','modules.jsx')]}]},/* ---------------- FLARE MODE MICRO-LOG (READ-ONLY MAPPING) ----------------
+     flareMode?,gate?,options?,note?} */
+function rgIt(itemId, type, inputType, i18nKey, dataPath, sourceComponent, x) {
+  return Object.assign({ itemId, type, inputType, i18nKey, dataPath, sourceComponent }, x || {});
+}
+const RG_CK = 'cf-checkins[d].';   /* the shared per-day journal record */
+const RG_ML = 'cf_modlogs_v1.';    /* tracker tools & logs store */
+const RG_FL = 'cf_flaremode_log_v1[d].'; /* flare micro-log (READ-ONLY map) */
+
+const CF_TRACKER_REGISTRY = [
+
+  /* ---------------- DIGESTION + core daily essentials ---------------- */
+  { trackerId: 'dig.core', moduleId: 'dig', displayOrder: 0, sourceComponent: 'checkin.jsx + checkinflow.jsx',
+    sections: [
+      { sectionId: 'core.essentials', i18nTitleKey: 'How do you feel?', items: [
+        rgIt('core.pain',   'question', 'scale',  'Pain Level',   RG_CK + 'pain',   'checkin.jsx', { canonicalKey: 'pain.overall' }),
+        rgIt('core.painNote','question','text',   'Note',         RG_CK + 'painNote', 'checkin.jsx'),
+        rgIt('core.energy', 'question', 'scale',  'Energy Level', RG_CK + 'energy', 'checkin.jsx', { canonicalKey: 'energy.level' }),
+        rgIt('core.pulse',  'question', 'scale',  'All things considered, how was your day?', RG_CK + 'pulse', 'checkinpulse.jsx', { note: "[CKREM] condition-adapted one-tap question (CKQ_BY_CONDITION); stored values 'Good day'/'Tough day'; day-specific — excluded from copy-yesterday", options: ['Tough day', 'Good day'] }),
+      ]},
+      { sectionId: 'core.sym', i18nTitleKey: 'Symptoms', items: [
+        rgIt('core.flare',  'question', 'boolean', 'Having a flare-up?', RG_CK + 'flare', 'checkin.jsx', { canonicalKey: 'flare.state' }),
+        rgIt('core.flareTypes', 'question', 'multiselect', 'Having a flare-up?', RG_CK + 'flareTypes', 'checkin.jsx', { note: 'sub-chips of flare' }),
+        rgIt('core.bowel',  'question', 'scale', 'Bowel mov. today?', RG_CK + 'bowel', 'checkin.jsx', { canonicalKey: 'bowel.frequency', options: ['0–2','2–4','4–6','+6'] }),
+        rgIt('core.water',  'question', 'scale', 'Water drunk today?', RG_CK + 'water', 'checkin.jsx', { canonicalKey: 'hydration.volume', options: ['<0.5L','0.5–1L','1–2L','+2L'] }),
+        rgIt('core.sleep',  'question', 'scale', 'Hours of sleep last night?', RG_CK + 'sleep', 'checkin.jsx', { canonicalKey: 'sleep.duration', options: ['<5h','5–7h','7–9h','+9h'], syncWriters: ['healthsync'] }),
+        rgIt('dig.digCtx',  'question', 'multiselect', 'Context (your conditions)', RG_CK + 'digCtx', 'modcheckin.jsx', { gate: 'condition-context chips (SM_DIG_CTX)' }),
+        rgIt('dig.digGas',  'question', 'boolean', 'Gas or bloating today?', RG_CK + 'digGas', 'modcheckin.jsx'),
+      ]},
+      { sectionId: 'core.life', i18nTitleKey: 'Lifestyle', items: [
+        rgIt('core.move',    'question', 'scale', 'Activity level?', RG_CK + 'move', 'checkin.jsx'),
+        rgIt('core.steps',   'question', 'scale', 'Steps done today?', RG_CK + 'steps', 'checkin.jsx', { canonicalKey: 'steps.count', syncWriters: ['healthsync'] }),
+        rgIt('core.nature',  'question', 'boolean', 'Time in nature?', RG_CK + 'nature', 'checkin.jsx'),
+        rgIt('core.animals', 'question', 'scale', 'Time with animals', RG_CK + 'animals', 'checkin.jsx'),
+        rgIt('core.sunlight','question', 'scale', 'Sun exposure?', RG_CK + 'sunlight', 'checkin.jsx'),
+        rgIt('core.sunProtect','question','boolean', null, RG_CK + 'sunProtect', 'checkin.jsx', { note: 'conditional sub-question of sunlight' }),
+        rgIt('core.tv',      'question', 'scale', 'TV, social media or video games', RG_CK + 'tv', 'checkin.jsx'),
+        rgIt('core.tobacco', 'question', 'scale', 'Cigarettes today?', RG_CK + 'tobacco', 'checkin.jsx'),
+        rgIt('core.alcohol', 'question', 'scale', 'Alcohol today?', RG_CK + 'alcohol', 'checkin.jsx'),
+        rgIt('core.subst',   'question', 'multiselect', 'Substances used today?', RG_CK + 'subst', 'checkin.jsx', { note: 'multi-select; normalize with cfSubstArr()' }),
+      ]},
+      { sectionId: 'core.mind', i18nTitleKey: 'Mind & connection', items: [
+        rgIt('core.mindset', 'question', 'scale', 'Your mindset today?', RG_CK + 'mindset', 'checkin.jsx', { canonicalKey: 'mood.tone', note: 'asked of everybody since 8 Sep 2026 — the Mind tracker no longer replaces it with Inner weather' }),
+        rgIt('core.love',    'question', 'boolean', 'Time with loved ones today?', RG_CK + 'love', 'checkin.jsx', { canonicalKey: 'people.time', gate: 'only without the Mind tracker (with it on, mind.mdConnect is the question)', mirrorFrom: 'mind.mdConnect' }),
+        rgIt('core.toxic',   'question', 'boolean', 'Toxic people around today?', RG_CK + 'toxic', 'checkin.jsx'),
+        rgIt('core.meditate','question', 'boolean', 'Have you meditated today?', RG_CK + 'meditate', 'checkin.jsx'),
+        rgIt('core.relaxed', 'question', 'boolean', 'Have you been relaxed today?', RG_CK + 'relaxed', 'checkin.jsx'),
+        rgIt('core.music',   'question', 'boolean', 'Did you listen to music today?', RG_CK + 'music', 'checkin.jsx'),
+        rgIt('core.sing',    'question', 'boolean', 'Have you sung today?', RG_CK + 'sing', 'checkin.jsx'),
+        rgIt('core.dance',   'question', 'boolean', 'Have you danced today?', RG_CK + 'dance', 'checkin.jsx'),
+      ]},
+      { sectionId: 'core.logs', i18nTitleKey: 'Tools & logs', items: [
+        rgIt('core.foodlog', 'log', null, 'Food journal', 'cf-foodlog[d][]', 'checkin.jsx'),
+        rgIt('core.medlog', 'log', null, 'Medication', 'cf_meds_v3 + cf_taken_v2 (read via medstate.jsx cfDoseState)', 'medjournal.jsx', { note: 'read-only day card — resolved doses on their SCHEDULED day; unlogged/snoozed render nothing; no copies/caches' }),
+      ]},
+      { sectionId: 'core.gfx', i18nTitleKey: 'Analytics', items: [
+        rgIt('core.gfx.calendar', 'graphic', null, 'Daily Journal', 'cf-checkins', 'checkin.jsx', { note: 'check-in calendar day tones + cyan flare days (flaresync)' }),
+        rgIt('core.gfx.charts', 'graphic', null, 'Analytics', 'cf-checkins', 'checkin.jsx', { chartKeys: ['health','pain','energy','flare','bowel','water','sleep','move','steps','nature','animals','sunlight','tv','tobacco','alcohol','subst','mindset','love','toxic','meditate','relaxed','music','sing','dance','digGas','pulse'] }),
+        rgIt('core.gfx.radar', 'graphic', null, 'My Flare Radar', 'cf-checkins + cf_flaremode_log_v1', 'flareradar.jsx', { note: 'READ-ONLY consumer — never modified' }),
+        rgIt('core.gfx.pdf', 'graphic', null, 'Download PDF', 'cf-checkins + cf-foodlog + cf_meds_v3', 'checkin.jsx', { gate: 'premium (PremiumGateModal) — unchanged' }),
+      ]},
+    ]},
+
+  /* ---------------- MUSCLES & JOINTS ---------------- */
+  { trackerId: 'musc.tracker', moduleId: 'musc', displayOrder: 1, sourceComponent: 'modcheckin.jsx + modscreens.jsx',
+    sections: [
+      { sectionId: 'musc.q', i18nTitleKey: 'Muscles & Joints', items: [
+        rgIt('musc.mjPain', 'question', 'scale', 'Joint & muscle pain today', RG_CK + 'mjPain', 'modcheckin.jsx', { canonicalKey: 'pain.overall', asked: 'once', mirrorFrom: 'core.pain', note: 'NOT RENDERED since 8 Sep 2026 — the same 0–10 pain, asked once as core.pain; the field keeps being written (cfJournalMirror), so its chart, its radar axis and the PDF are unchanged' }),
+        rgIt('musc.mjStiff', 'question', 'scale', 'Morning stiffness lasted…', RG_CK + 'mjStiff', 'modcheckin.jsx', { canonicalKey: 'stiffness.morning', options: ['None','<15 min','15–60 min','>1 h'] }),
+        rgIt('musc.mjMobility', 'question', 'scale', 'How does your body move today?', RG_CK + 'mjMobility', 'modcheckin.jsx'),
+        rgIt('musc.mjZones', 'question', 'multiselect', 'Where do you feel it?', RG_CK + 'mjZones', 'modcheckin.jsx'),
+      ]},
+      { sectionId: 'musc.tools', i18nTitleKey: 'Tools & logs', items: [
+        rgIt('musc.tool.bodymap', 'log', null, 'Body map', RG_ML + 'zones.pain', 'bodymap.jsx', { note: 'also a screen of its own in the evening flow (checkinflow.jsx): «Save for today» writes today an entry per carried-over zone, the value only; «Next» without touching anything writes nothing' }),
+        rgIt('musc.tool.unlock', 'log', 'scale', 'Morning unlock', RG_ML + 'unlock', 'modscreens.jsx', { canonicalKey: 'stiffness.morning', options: ['None','<15 min','15–60 min','>1 h'] }),
+        rgIt('musc.tool.routines', 'tool', null, 'Gentle routines', RG_ML + "moments[type='move_musc'|'rest_musc']", 'modscreens.jsx'),
+      ]},
+      { sectionId: 'musc.gfx', i18nTitleKey: 'Analytics', items: [
+        rgIt('musc.gfx.charts', 'graphic', null, 'Analytics', 'cf-checkins', 'modanalytics.jsx', { chartKeys: ['mjPain','mjStiff','mjMobility'] }),
+        rgIt('musc.gfx.radar', 'graphic', null, 'Joints & muscles', 'cf-checkins + cf_modlogs_v1.zones.pain', 'modules.jsx', { note: 'radar axis; zone-blended' }),
+      ]},
+    ]},
+
+  /* ---------------- EYES ---------------- */
+  { trackerId: 'eyes.tracker', moduleId: 'eyes', displayOrder: 2, sourceComponent: 'modcheckin.jsx + modscreens.jsx',
+    sections: [
+      { sectionId: 'eyes.q', i18nTitleKey: 'Eyes', items: [
+        rgIt('eyes.eyeDry', 'question', 'scale', 'Eye dryness', RG_CK + 'eyeDry', 'modcheckin.jsx'),
+        rgIt('eyes.eyeLight', 'question', 'scale', 'Light sensitivity', RG_CK + 'eyeLight', 'modcheckin.jsx'),
+        rgIt('eyes.eyeChips', 'question', 'multiselect', 'Anything else today?', RG_CK + 'eyeChips', 'modcheckin.jsx'),
+        rgIt('eyes.eyeNote', 'question', 'text', 'Note', RG_CK + 'eyeNote', 'modcheckin.jsx'),
+      ]},
+      { sectionId: 'eyes.tools', i18nTitleKey: 'Tools & logs', items: [
+        rgIt('eyes.tool.episodes', 'log', null, 'Episode Log', RG_ML + 'episodes[]', 'modscreens.jsx', { note: '[UVE2] {start, end|null, side?, endNote?} — side & how it ended are optional and never defaulted; report shows up to 12' }),
+        rgIt('eyes.tool.drops', 'tool', 'boolean', null, 'cf_modules_v1.cfg.dropReminder', 'modscreens.jsx', { note: 'Drop Companion reminder toggle' }),
+      ]},
+      { sectionId: 'eyes.gfx', i18nTitleKey: 'Analytics', items: [
+        rgIt('eyes.gfx.charts', 'graphic', null, 'Analytics', 'cf-checkins', 'modanalytics.jsx', { chartKeys: ['eyeDry','eyeLight'] }),
+        rgIt('eyes.gfx.chips', 'graphic', null, 'Anything else today?', RG_CK + 'eyeChips', 'modanalytics.jsx', { note: '[UVE1] chip counts + notes in Analytics and the PDF — generic SM_CHIP_PARAMS block (SMChipSummary)' }),
+        rgIt('eyes.gfx.radar', 'graphic', null, 'Eye comfort', 'cf-checkins + cf_modlogs_v1.episodes', 'modules.jsx'),
+        rgIt('eyes.gfx.radar2', 'graphic', null, 'Light sensitivity', RG_CK + 'eyeLight', 'modules.jsx', { note: '[UVE1] own radar axis (SM_RADAR_DEFS), appears once logged' }),
+      ]},
+    ]},
+
+  /* ---------------- SKIN & MOUTH ---------------- */
+  { trackerId: 'skin.tracker', moduleId: 'skin', displayOrder: 3, sourceComponent: 'modcheckin.jsx + modscreens2.jsx',
+    sections: [
+      { sectionId: 'skin.q', i18nTitleKey: 'Skin & Mouth', items: [
+        rgIt('skin.skItch', 'question', 'scale', 'Itch today', RG_CK + 'skItch', 'modcheckin.jsx'),
+        rgIt('skin.skChips', 'question', 'multiselect', 'Anything new or changed?', RG_CK + 'skChips', 'modcheckin.jsx', { canonicalKey: 'mouth.ulcers', note: "only the 'Mouth ulcer' chip participates" }),
+        rgIt('skin.skNote', 'question', 'text', 'Note', RG_CK + 'skNote', 'modcheckin.jsx'),
+      ]},
+      { sectionId: 'skin.tools', i18nTitleKey: 'Tools & logs', items: [
+        rgIt('skin.tool.bodymap', 'log', null, 'Body map', RG_ML + 'zones.skin', 'bodymap.jsx', { note: 'also a screen of its own in the evening flow (checkinflow.jsx): «Save for today» writes today an entry per carried-over zone, the value only; «Next» without touching anything writes nothing' }),
+        rgIt('skin.tool.mouth', 'log', 'counter', null, RG_ML + 'mouth[]', 'modscreens2.jsx', { canonicalKey: 'mouth.ulcers', note: 'mouth-spot map (region + count)' }),
+      ]},
+      { sectionId: 'skin.gfx', i18nTitleKey: 'Analytics', items: [
+        rgIt('skin.gfx.charts', 'graphic', null, 'Analytics', 'cf-checkins', 'modanalytics.jsx', { chartKeys: ['skItch'] }),
+        rgIt('skin.gfx.radar', 'graphic', null, 'Skin & mouth', 'cf-checkins + cf_modlogs_v1.zones.skin', 'modules.jsx'),
+      ]},
+    ]},
+
+  /* ---------------- PELVIC HEALTH ---------------- */
+  { trackerId: 'pelvic.tracker', moduleId: 'pelvic', displayOrder: 4, sourceComponent: 'modcheckin.jsx + modscreens2.jsx',
+    sections: [
+      { sectionId: 'pelvic.q', i18nTitleKey: 'Pelvic Health', items: [
+        rgIt('pelvic.pvPain', 'question', 'scale', 'Pelvic pain today', RG_CK + 'pvPain', 'modcheckin.jsx', { canonicalKey: 'pain.overall', asked: 'once', mirrorFrom: 'core.pain', note: 'NOT RENDERED since 8 Sep 2026 — Endometriosis was answering pain four times in one evening; the field keeps being written (cfJournalMirror)' }),
+        rgIt('pelvic.pvBleed', 'question', 'scale', 'Bleeding today?', RG_CK + 'pvBleed', 'modcheckin.jsx', { canonicalKey: 'cycle.flow', options: ['None','Spotting','Normal','Heavy'] }),
+        rgIt('pelvic.pvUrin', 'question', 'multiselect', 'Bathroom comfort', RG_CK + 'pvUrin', 'modcheckin.jsx'),
+        rgIt('pelvic.pvSpasm', 'question', 'boolean', 'Pelvic spasms?', RG_CK + 'pvSpasm', 'modcheckin.jsx'),
+        rgIt('pelvic.pvNote', 'question', 'text', 'Note', RG_CK + 'pvNote', 'modcheckin.jsx'),
+      ]},
+      { sectionId: 'pelvic.tools', i18nTitleKey: 'Tools & logs', items: [
+        rgIt('pelvic.tool.bodymap', 'log', null, 'Body map', RG_ML + 'zones.pelvic', 'bodymap.jsx', { note: 'also a screen of its own in the evening flow (checkinflow.jsx): «Save for today» writes today an entry per carried-over zone, the value only; «Next» without touching anything writes nothing' }),
+        rgIt('pelvic.tool.cycle', 'log', null, 'Cycle Companion', RG_ML + 'cycle', 'modscreens2.jsx', { canonicalKey: 'cycle.flow', options: ['Spotting','Normal','Heavy'] }),
+      ]},
+      { sectionId: 'pelvic.gfx', i18nTitleKey: 'Analytics', items: [
+        rgIt('pelvic.gfx.charts', 'graphic', null, 'Analytics', 'cf-checkins', 'modanalytics.jsx', { chartKeys: ['pvPain','pvBleed'] }),
+        rgIt('pelvic.gfx.radar', 'graphic', null, 'Pelvic comfort', 'cf-checkins + cf_modlogs_v1.zones.pelvic', 'modules.jsx'),
+      ]},
+    ]},
+
+  /* ---------------- BREATH & HEART ---------------- */
+  { trackerId: 'breath.tracker', moduleId: 'breath', displayOrder: 5, sourceComponent: 'modcheckin.jsx + modscreens3.jsx',
+    sections: [
+      { sectionId: 'breath.q', i18nTitleKey: 'Breath & Heart', items: [
+        rgIt('breath.bhBreath', 'question', 'scale', 'How did breathing feel today?', RG_CK + 'bhBreath', 'modcheckin.jsx'),
+        rgIt('breath.bhCtx', 'question', 'multiselect', 'Noticed when…', RG_CK + 'bhCtx', 'modcheckin.jsx'),
+        rgIt('breath.bhCough', 'question', 'scale', 'Cough today?', RG_CK + 'bhCough', 'modcheckin.jsx'),
+        rgIt('breath.bhChips', 'question', 'multiselect', 'Also felt…', RG_CK + 'bhChips', 'modcheckin.jsx'),
+        rgIt('breath.bhReliever', 'question', 'counter', 'Reliever inhaler used today', RG_CK + 'bhReliever', 'modcheckin.jsx'),
+      ]},
+      { sectionId: 'breath.tools', i18nTitleKey: 'Tools & logs', items: [
+        rgIt('breath.tool.bp', 'log', 'number', null, RG_ML + "readings[type='bp']", 'readingslog.jsx', { note: 'user-typed, display-only, no ranges/zones ever' }),
+        rgIt('breath.tool.peak', 'log', 'number', null, RG_ML + "readings[type='peak']", 'readingslog.jsx'),
+        rgIt('breath.tool.breathe', 'tool', null, null, RG_ML + "moments[type='breathe'|'rest_breath']", 'modscreens3.jsx', { note: 'breathing exercises + equal-credit rest' }),
+        rgIt('breath.tool.inhaler', 'tool', 'boolean', null, 'cf_modules_v1.cfg.inhalerReminder', 'modscreens3.jsx'),
+      ]},
+      { sectionId: 'breath.gfx', i18nTitleKey: 'Analytics', items: [
+        rgIt('breath.gfx.charts', 'graphic', null, 'Analytics', 'cf-checkins', 'modanalytics.jsx', { chartKeys: ['bhBreath','bhCough','bhReliever'] }),
+        rgIt('breath.gfx.radar', 'graphic', null, 'Breathing', 'cf-checkins', 'modules.jsx'),
+      ]},
+    ]},
+
+  /* ---------------- MIND & MOOD (≙ the Greenhouse) ---------------- */
+  { trackerId: 'mind.tracker', moduleId: 'mind', displayOrder: 6, sourceComponent: 'modcheckin.jsx + mindmod.jsx',
+    sections: [
+      { sectionId: 'mind.q', i18nTitleKey: 'Mind & Mood', items: [
+        rgIt('mind.mdWeather', 'question', 'scale', 'Your inner weather today', RG_CK + 'mdWeather', 'modcheckin.jsx', { canonicalKey: 'mood.tone', asked: 'once', mirrorFrom: 'core.mindset', options: ['Sunny','Partly cloudy','Cloudy','Rainy','Stormy'], note: 'NOT RENDERED since 8 Sep 2026 — Mindset is the question for everybody; the field keeps being written through the C1 bijection (cfJournalMirror), so the Inner Weather tool, its chart and the PDF are unchanged' }),
+        rgIt('mind.mdWorry', 'question', 'scale', 'Worry & anxiety level', RG_CK + 'mdWorry', 'modcheckin.jsx'),
+        rgIt('mind.mdConnect', 'question', 'scale', 'Time with people today?', RG_CK + 'mdConnect', 'modcheckin.jsx', { canonicalKey: 'people.time', note: 'with the Mind tracker on this is THE question about people, and core.love is written from it (cfJournalMirror)' }),
+        rgIt('mind.mdSwing', 'question', 'scale', 'Mood dial — where did it sit?', RG_CK + 'mdSwing', 'modcheckin.jsx', { gate: 'smMindGates().swing (Bipolar disorder)' }),
+        rgIt('mind.mdUrge', 'question', 'scale', 'Urges or cravings today?', RG_CK + 'mdUrge', 'modcheckin.jsx', { gate: 'smMindGates().urges (Alcohol/Substance use disorder)', note: 'craving — never merged with core.subst (use)' }),
+        rgIt('mind.mdSteady', 'question', 'boolean', 'How did the day go?', RG_CK + 'mdSteady', 'modcheckin.jsx', { canonicalKey: 'clean.day', gate: 'smMindGates().urges', asked: 'once', mirrorFrom: 'mind.clean', note: 'NOT RENDERED since 8 Sep 2026 — the clean-day question above asks exactly this and carries the streak; the field keeps being written (cfJournalMirror)' }),
+        rgIt('mind.clean', 'question', 'boolean', 'Did you drink today?', RG_CK + 'clean', 'checkinpulse.jsx', { canonicalKey: 'clean.day', gate: 'urges conditions (AUD/SUD)', options: ['Slip', 'Clean'], note: "[CKREM] clean-day one-tap question; streak + lifetime total in the card; NEVER merged with core.subst/alcohol (those log amounts); mind.mdSteady is written from it (cfJournalMirror)" }),
+        rgIt('mind.mdFocus', 'question', 'scale', 'Focus today', RG_CK + 'mdFocus', 'modcheckin.jsx', { gate: 'smMindGates().focus (ADHD)' }),
+        rgIt('mind.mdChips', 'question', 'multiselect', 'Your mind also felt…', RG_CK + 'mdChips', 'modcheckin.jsx'),
+        rgIt('mind.mdNote', 'question', 'text', 'Note', RG_CK + 'mdNote', 'modcheckin.jsx'),
+      ]},
+      { sectionId: 'mind.gfx', i18nTitleKey: 'Analytics', items: [
+        rgIt('mind.gfx.charts', 'graphic', null, 'Analytics', 'cf-checkins', 'modanalytics.jsx', { chartKeys: ['mdWeather','mdWorry','mdSwing','mdUrge','mdFocus','mdConnect','clean'] }),
+        rgIt('mind.gfx.radar', 'graphic', null, 'Mind & mood', 'cf-checkins', 'modules.jsx'),
+      ]},
+    ]},
+
+  /* ---------------- ENERGY & REST (always on, always LAST) ---------------- */
+  { trackerId: 'univ.tracker', moduleId: 'univ', displayOrder: 7, alwaysOn: true, pinnedLast: true, sourceComponent: 'modcheckin.jsx + modscreens3.jsx',
+    sections: [
+      { sectionId: 'univ.q', i18nTitleKey: 'Energy & Rest', items: [
+        /* energy / sleep / mindset are DEDUPED to core fields — asked once, never twice */
+        rgIt('univ.enFog', 'question', 'scale', 'Head today?', RG_CK + 'enFog', 'modcheckin.jsx'),
+        rgIt('univ.enDizzy', 'question', 'counter', 'Dizzy on standing today?', RG_CK + 'enDizzy', 'modcheckin.jsx'),
+        rgIt('univ.enChips', 'question', 'multiselect', 'Also today…', RG_CK + 'enChips', 'modcheckin.jsx'),
+      ]},
+      { sectionId: 'univ.tools', i18nTitleKey: 'Tools & logs', items: [
+        rgIt('univ.tool.battery', 'tool', 'scale', null, RG_CK + 'energy', 'modscreens3.jsx', { canonicalKey: 'energy.level', note: 'Battery/Spoons — a presentation of the existing energy field' }),
+        rgIt('univ.tool.pacing', 'log', 'text', null, RG_ML + 'pacing', 'modscreens3.jsx', { note: 'pacing planner (activity/rest blocks)' }),
+        rgIt('univ.tool.glucose', 'log', 'number', null, RG_ML + "readings[type='glu']", 'readingslog.jsx', { gate: 'cf_modules_v1.cfg.glucose (Diabetes)' }),
+      ]},
+      { sectionId: 'univ.gfx', i18nTitleKey: 'Analytics', items: [
+        rgIt('univ.gfx.charts', 'graphic', null, 'Analytics', 'cf-checkins', 'modanalytics.jsx', { chartKeys: ['enFog','enDizzy'] }),
+        rgIt('univ.gfx.radar', 'graphic', null, 'Brain fog', 'cf-checkins', 'modules.jsx'),
+      ]},
+    ]},
+
+  /* ---------------- FLARE MODE MICRO-LOG (READ-ONLY MAPPING) ----------------
      Components/screens/write logic are NEVER edited (absolute code lock).
      These entries exist so both modes stay synchronized at the data level:
-     shared canonicalKeys are what flaresync.jsx already bridges today. */{trackerId:'flare.microlog',moduleId:'flare',displayOrder:99,flareMode:true,neverRendered:true,sourceComponent:'flaremodecheckin.jsx + flaremodedash.jsx (LOCKED)',sections:[{sectionId:'flare.q',i18nTitleKey:'Quick log',items:[rgIt('flare.pain','question','scale',null,RG_FL+'pain[]','flaremodecheckin.jsx',{flareMode:true,canonicalKey:'pain.overall',note:'day PEAK → cf-checkins pain (flaresync, live)'}),rgIt('flare.energy','question','scale',null,RG_FL+'energy[]','flaremodecheckin.jsx',{flareMode:true,canonicalKey:'energy.level',note:'LAST battery 1–5 ×2 → energy 0–10 (flaresync, live)'}),rgIt('flare.bath','question','counter',null,RG_FL+'bath','flaremodecheckin.jsx',{flareMode:true,canonicalKey:'bowel.frequency',note:'count → bucket (flaresync, live)'}),rgIt('flare.water','question','counter',null,RG_FL+'water','flaremodecheckin.jsx',{flareMode:true,canonicalKey:'hydration.volume',note:'glasses → bucket (flaresync, live)'}),rgIt('flare.mood','question','scale',null,RG_FL+'mood[]','flaremodecheckin.jsx',{flareMode:true,canonicalKey:'mood.tone',note:'synced ⇄ mdWeather via flaresync/flarefanout (C1 approved)'}),rgIt('flare.bristol','question','scale',null,RG_FL+'bristol[]','flaremodecheckin.jsx',{flareMode:true,note:'flare-only — no journal field matches safely'}),rgIt('flare.note','question','text',null,RG_FL+'note','flaremodecheckin.jsx',{flareMode:true}),rgIt('flare.voice','log',null,null,RG_FL+'voice','flaremodecheckin.jsx',{flareMode:true}),rgIt('flare.state','question','boolean',null,'cf_flaremode_hist_v1 + CFFlareMode.active','flaremode.jsx',{flareMode:true,canonicalKey:'flare.state',note:"flare days → flare:'Yes' (flaresync, live)"})]}]}];/* ---------- canonical keys — the dedup/sync vocabulary ---------- */const CF_CANONICAL_KEYS={'pain.overall':{status:'shared-live',mechanism:'flaresync.jsx (flare→journal, manual edit wins)',items:['core.pain','flare.pain']},'energy.level':{status:'shared-live',mechanism:'single field + flaresync + Battery/Spoons presentation',items:['core.energy','flare.energy','univ.tool.battery']},'bowel.frequency':{status:'shared-live',mechanism:'flaresync bucket mapping',items:['core.bowel','flare.bath']},'hydration.volume':{status:'shared-live',mechanism:'flaresync bucket mapping',items:['core.water','flare.water']},'flare.state':{status:'shared-live',mechanism:'flaresync (flare days → flare:Yes) + cyan day tone',items:['core.flare','flare.state']},'sleep.duration':{status:'shared-live',mechanism:'healthsync autofill (_sync marker, manual edit wins)',items:['core.sleep']},'steps.count':{status:'shared-live',mechanism:'healthsync autofill (_sync marker, manual edit wins)',items:['core.steps']},/* C1–C4 — APPROVED & MERGED (Gerhard, 2026-07-05). One measure, every path. */'mood.tone':{status:'shared-live',preferred:'mind.mdWeather',mechanism:'canonicalfanout.jsx bijection Fighter=Sunny=5…Depressed=Stormy=1; Mindset row hides when Inner weather is asked (mind on + unified); flare mood via flaresync/flarefanout',items:['core.mindset','mind.mdWeather','flare.mood']},'stiffness.morning':{status:'shared-live',mechanism:'canonicalfanout.jsx two-way (question ⇄ Morning-unlock tool, _canonSync marker; tool kept as surface per R4)',items:['musc.mjStiff','musc.tool.unlock']},'cycle.flow':{status:'shared-live',mechanism:"canonicalfanout.jsx two-way (pvBleed ⇄ cycle day; 'None' clears the day; marker-guarded)",items:['pelvic.pvBleed','pelvic.tool.cycle']},'mouth.ulcers':{status:'shared-live',mechanism:"canonicalfanout.jsx one-way (mouth spot → 'Mouth ulcer' chip; a chip can't invent a region; never removes)",items:['skin.skChips','skin.tool.mouth']}};/* ---------- condition → module → tracker matrix ----------
+     shared canonicalKeys are what flaresync.jsx already bridges today. */
+  { trackerId: 'flare.microlog', moduleId: 'flare', displayOrder: 99, flareMode: true, neverRendered: true,
+    sourceComponent: 'flaremodecheckin.jsx + flaremodedash.jsx (LOCKED)',
+    sections: [
+      { sectionId: 'flare.q', i18nTitleKey: 'Quick log', items: [
+        rgIt('flare.pain', 'question', 'scale', null, RG_FL + 'pain[]', 'flaremodecheckin.jsx', { flareMode: true, canonicalKey: 'pain.overall', note: 'day PEAK → cf-checkins pain (flaresync, live)' }),
+        rgIt('flare.energy', 'question', 'scale', null, RG_FL + 'energy[]', 'flaremodecheckin.jsx', { flareMode: true, canonicalKey: 'energy.level', note: 'LAST battery 1–5 ×2 → energy 0–10 (flaresync, live)' }),
+        rgIt('flare.bath', 'question', 'counter', null, RG_FL + 'bath', 'flaremodecheckin.jsx', { flareMode: true, canonicalKey: 'bowel.frequency', note: 'count → bucket (flaresync, live)' }),
+        rgIt('flare.water', 'question', 'counter', null, RG_FL + 'water', 'flaremodecheckin.jsx', { flareMode: true, canonicalKey: 'hydration.volume', note: 'glasses → bucket (flaresync, live)' }),
+        rgIt('flare.mood', 'question', 'scale', null, RG_FL + 'mood[]', 'flaremodecheckin.jsx', { flareMode: true, canonicalKey: 'mood.tone', note: 'synced ⇄ mdWeather via flaresync/flarefanout (C1 approved)' }),
+        rgIt('flare.bristol', 'question', 'scale', null, RG_FL + 'bristol[]', 'flaremodecheckin.jsx', { flareMode: true, note: 'flare-only — no journal field matches safely' }),
+        rgIt('flare.note', 'question', 'text', null, RG_FL + 'note', 'flaremodecheckin.jsx', { flareMode: true }),
+        rgIt('flare.voice', 'log', null, null, RG_FL + 'voice', 'flaremodecheckin.jsx', { flareMode: true }),
+        rgIt('flare.state', 'question', 'boolean', null, 'cf_flaremode_hist_v1 + CFFlareMode.active', 'flaremode.jsx', { flareMode: true, canonicalKey: 'flare.state', note: "flare days → flare:'Yes' (flaresync, live)" }),
+      ]},
+    ]},
+];
+
+/* ---------- canonical keys — the dedup/sync vocabulary ---------- */
+const CF_CANONICAL_KEYS = {
+  'pain.overall':      { status: 'shared-live', preferred: 'core.pain', mechanism: 'flaresync.jsx (flare→journal, manual edit wins) + cfJournalMirror (core.pain → mjPain/pvPain, the poda of 8 Sep 2026: same 0–10 scale, asked once)', items: ['core.pain', 'flare.pain', 'musc.mjPain', 'pelvic.pvPain'] },
+  'energy.level':      { status: 'shared-live', mechanism: 'single field + flaresync + Battery/Spoons presentation', items: ['core.energy', 'flare.energy', 'univ.tool.battery'] },
+  'bowel.frequency':   { status: 'shared-live', mechanism: 'flaresync bucket mapping', items: ['core.bowel', 'flare.bath'] },
+  'hydration.volume':  { status: 'shared-live', mechanism: 'flaresync bucket mapping', items: ['core.water', 'flare.water'] },
+  'flare.state':       { status: 'shared-live', mechanism: 'flaresync (flare days → flare:Yes) + cyan day tone', items: ['core.flare', 'flare.state'] },
+  'sleep.duration':    { status: 'shared-live', mechanism: 'healthsync autofill (_sync marker, manual edit wins)', items: ['core.sleep'] },
+  'steps.count':       { status: 'shared-live', mechanism: 'healthsync autofill (_sync marker, manual edit wins)', items: ['core.steps'] },
+  /* C1–C4 — APPROVED & MERGED (Gerhard, 2026-07-05). One measure, every path.
+     The poda of 8 Sep 2026 added three more (clean.day · people.time · the
+     two pain twins above) with the same mechanism: cfJournalMirror. */
+  'mood.tone':         { status: 'shared-live', preferred: 'core.mindset', mechanism: 'C1 bijection Fighter=Sunny=5…Depressed=Stormy=1; since 8 Sep 2026 the direction is one-way, mindset → mdWeather (cfJournalMirror, flag-independent); flare mood via flaresync/flarefanout', items: ['core.mindset', 'mind.mdWeather', 'flare.mood'] },
+  'stiffness.morning': { status: 'shared-live', mechanism: 'canonicalfanout.jsx two-way (question ⇄ Morning-unlock tool, _canonSync marker; tool kept as surface per R4)', items: ['musc.mjStiff', 'musc.tool.unlock'] },
+  'cycle.flow':        { status: 'shared-live', mechanism: "canonicalfanout.jsx two-way (pvBleed ⇄ cycle day; 'None' clears the day; marker-guarded)", items: ['pelvic.pvBleed', 'pelvic.tool.cycle'] },
+  'mouth.ulcers':      { status: 'shared-live', mechanism: "canonicalfanout.jsx one-way (mouth spot → 'Mouth ulcer' chip; a chip can't invent a region; never removes)", items: ['skin.skChips', 'skin.tool.mouth'] },
+  'clean.day':         { status: 'shared-live', preferred: 'mind.clean', mechanism: "cfJournalMirror one-way (Clean → 'Steady day' · Slip → 'Had a slip'); the clean-day question carries the streak and the lifetime total", items: ['mind.clean', 'mind.mdSteady'] },
+  'people.time':       { status: 'shared-live', preferred: 'mind.mdConnect (Mind tracker on) · core.love (off)', mechanism: "cfJournalMirror one-way ('Alone all day' → No · 'A little'/'Plenty' → Yes); the three-level question is the finer one, so it is the one asked when its tracker is on", items: ['core.love', 'mind.mdConnect'] },
+};
+
+/* ---------- condition → module → tracker matrix ----------
    Derived LIVE from SM_CONDITIONS (modules.jsx) — the single source of
-   truth is never duplicated. trackerIds = one tracker per module today. */function cfBuildConditionTrackerMap(){const trackerByMod={};CF_TRACKER_REGISTRY.forEach(t=>{if(!t.flareMode)trackerByMod[t.moduleId]=t.trackerId;});return(window.SM_CONDITIONS||[]).map(c=>({conditionId:c.name,moduleIds:[...new Set([...(c.mods||[]),'univ'])],trackerIds:[...new Set([...(c.mods||[]),'univ'])].map(m=>trackerByMod[m]).filter(Boolean),principal:c.principal,gates:{swing:!!c.swing,urges:!!c.urges,focus:!!c.focus,glucose:!!c.glucose,manual:!!c.manual}}));}const CF_CONDITION_TRACKER_MAP=cfBuildConditionTrackerMap();/* ---------- pure lookup helpers (no UI, no behavior) ---------- */function cfRegistryTracker(trackerId){return CF_TRACKER_REGISTRY.find(t=>t.trackerId===trackerId)||null;}function cfRegistryItems(pred){const out=[];CF_TRACKER_REGISTRY.forEach(t=>t.sections.forEach(s=>s.items.forEach(i=>{if(!pred||pred(i,s,t))out.push(i);})));return out;}function cfRegistryByCanonical(key){return cfRegistryItems(i=>i.canonicalKey===key);}Object.assign(window,{CF_TRACKER_REGISTRY,CF_CANONICAL_KEYS,CF_CONDITION_TRACKER_MAP,cfRegistryTracker,cfRegistryItems,cfRegistryByCanonical,cfBuildConditionTrackerMap});
+   truth is never duplicated. trackerIds = one tracker per module today. */
+function cfBuildConditionTrackerMap() {
+  const trackerByMod = {}; CF_TRACKER_REGISTRY.forEach((t) => { if (!t.flareMode) trackerByMod[t.moduleId] = t.trackerId; });
+  return (window.SM_CONDITIONS || []).map((c) => ({
+    conditionId: c.name,
+    moduleIds: [...new Set([...(c.mods || []), 'univ'])],
+    trackerIds: [...new Set([...(c.mods || []), 'univ'])].map((m) => trackerByMod[m]).filter(Boolean),
+    principal: c.principal,
+    gates: { swing: !!c.swing, urges: !!c.urges, focus: !!c.focus, glucose: !!c.glucose, manual: !!c.manual },
+  }));
+}
+const CF_CONDITION_TRACKER_MAP = cfBuildConditionTrackerMap();
+
+/* ---------- pure lookup helpers (no UI, no behavior) ---------- */
+function cfRegistryTracker(trackerId) { return CF_TRACKER_REGISTRY.find((t) => t.trackerId === trackerId) || null; }
+function cfRegistryItems(pred) {
+  const out = [];
+  CF_TRACKER_REGISTRY.forEach((t) => t.sections.forEach((s) => s.items.forEach((i) => { if (!pred || pred(i, s, t)) out.push(i); })));
+  return out;
+}
+function cfRegistryByCanonical(key) { return cfRegistryItems((i) => i.canonicalKey === key); }
+
+Object.assign(window, {
+  CF_TRACKER_REGISTRY, CF_CANONICAL_KEYS, CF_CONDITION_TRACKER_MAP,
+  cfRegistryTracker, cfRegistryItems, cfRegistryByCanonical, cfBuildConditionTrackerMap,
+});
 })();

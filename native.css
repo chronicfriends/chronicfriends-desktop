@@ -169,3 +169,51 @@ html[data-cf-os="android"] {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
+
+/* ===================================================================
+   TAP9 · EL RECORRIDO AGRUPADO QUEDABA DEBAJO DE LA BARRA DE ESTADO
+   (9 sep 2026 — lo cazó Gerhard probando la 1.0.4 build 40 en su iPhone)
+
+   `.ckf-ov` es un overlay `position:absolute; inset:0`, así que empieza en
+   y=0: encima va la hora, la cobertura y la batería del teléfono. Su cabecera
+   `.ckf-top` (flecha atrás · barra de progreso · contador «4/15» · cerrar)
+   trae `padding:14px 18px 0` — catorce píxeles fijos, sin reservar nada para
+   la barra del sistema. En la captura de Gerhard, «4/15» sale pisado por el
+   reloj y la señal 5G, y la flecha de atrás por el «◀ TestFlight».
+   El resto de la app no lo sufre porque sus pantallas abren con la cabecera
+   de la ola verde, que ya empuja el contenido hacia abajo.
+
+   Se arregla con la MISMA fuente de dato que las siete reglas de arriba: la
+   medida buena la publica native/App.js en `--cf-sat` (useSafeAreaInsets, y
+   dividida por el zoom). No se usa `env(safe-area-inset-top)` como dato
+   principal porque dentro del WebView de Android vale 0 aunque el index.html
+   declare `viewport-fit=cover` — la misma trampa documentada arriba para
+   `--cf-sab`. `env()` queda de reserva para el navegador de escritorio.
+   Se conservan los 14 px originales de aire: lo único que se suma es lo que
+   mide la barra del sistema, que en un aparato sin barra vale 0 y deja la
+   pantalla EXACTAMENTE como la dibujó Claude Design.
+
+   Va en native.css y no en design/styles.css a propósito: este fichero es
+   nuestro y el volcado de Claude Design lo conserva («conserva vendor/,
+   native.css, native.js»), así que el próximo export no se lo lleva. */
+.ckf-top {
+  padding-top: calc(14px + var(--cf-sat, env(safe-area-inset-top, 0px))) !important;
+}
+
+/* Y lo segundo que pidió Gerhard en la misma prueba: «centrarlo más, que si no
+   queda cortado». Cuando una pantalla lleva pocas preguntas, la tarjeta se
+   quedaba pegada arriba y debajo sobraba media pantalla vacía hasta el botón.
+   El primer intento fue `margin-block:auto` en los hijos, y NO funciona aquí:
+   styles.css:1532 trae `.ckf-body>.card-solid:last-child{margin-bottom:0
+   !important}` —puesto a propósito por Claude Design para matar 16 px de
+   espacio muerto— y ese `!important` gana al margen automático de abajo. El
+   resultado era el contrario del buscado: 328 px de hueco arriba y 0 abajo.
+   La buena es `justify-content: safe center`: centra el espacio que sobra y,
+   en cuanto el contenido desborda, se comporta como `flex-start` — o sea que
+   NUNCA recorta por arriba, que es el fallo del `center` a secas en un
+   contenedor con scroll. Medido abajo en las dos situaciones. */
+.ckf-body {
+  display: flex;
+  flex-direction: column;
+  justify-content: safe center;
+}

@@ -163,6 +163,33 @@
   /* Envío desde código (lo que llamará la UI cuando Claude Design la conecte).
      Deja el mensaje en el espejo local ANTES de que la nube conteste, para que
      la conversación se pinte al instante. */
+  /* 🔴 CHAT11 (16 sep 2026) — CADA MENSAJE SALÍA 2 O 3 VECES.
+     La pantalla (design/chat.jsx) mete el mensaje en ESTE MISMO espejo
+     (cf_chats_v1) y ACTO SEGUIDO nos llama: si aquí volvíamos a meterlo, la
+     conversación se quedaba con dos copias, cada una con su milisegundo, y
+     como el id del documento sale de ese milisegundo (msgId = uid + ts),
+     tambien subían DOS documentos a la nube. El barrido scanOutbox() remataba
+     la faena subiendo la copia huérfana como un tercero.
+     La cura es una sola regla: UN MENSAJE, UN ts. Si la pantalla ya dejó este
+     mensaje ahí hace un momento, lo ADOPTAMOS (reutilizamos su ts) en vez de
+     escribir otro. Así, aunque el mensaje se mande dos veces por el camino que
+     sea, el documento es el mismo y se sobrescribe en vez de duplicarse.
+     Cuando Claude Design quite el push de la pantalla, esto no encuentra nada
+     que adoptar y sigue funcionando igual. */
+  var ADOPT_MS = 15000;
+
+  function findAdoptable(conv, txt, tsNow) {
+    var list = conv.messages || [];
+    for (var i = list.length - 1; i >= 0; i--) {
+      var m = list[i];
+      if (!m || m.from !== 'me') continue;
+      if ((tsNow - (m.ts || 0)) > ADOPT_MS) return -1;   /* fuera de ventana: ya no es este envío */
+      if (m.cid || m._failed) continue;                  /* ya tiene dueño en la nube */
+      if (m.text === txt) return i;
+    }
+    return -1;
+  }
+
   function send(peer, text) {
     if (!active()) return nope('unavailable');
     if (!isCloudUid(peer)) return nope('not-cloud-uid');
@@ -170,14 +197,27 @@
     if (String(text).length > 2000) return nope('too-long');
     if (FR() && FR().isFriend && !FR().isFriend(peer)) return nope('not-friend');
 
-    var ts = now();
+    var txt = String(text);
     var store = loadChats();
     var conv = conversation(store, peer);
-    conv.messages.push({ from: 'me', text: String(text), ts: ts });
-    conv.lastTs = ts;
-    saveChats(store); emit();
+    var tsNow = now();
+    var adoptado = findAdoptable(conv, txt, tsNow);
+    var ts;
+    if (adoptado >= 0) {
+      ts = conv.messages[adoptado].ts || tsNow;   /* la pantalla ya lo pintó: no se duplica */
+    } else {
+      ts = tsNow;
+      /* dos mensajes en el MISMO milisegundo compartirían id de documento
+         (msgId = uid + ts) y el segundo borraría al primero, porque se escribe
+         con overwrite. Un humano no escribe tan rápido, pero un reenvío o un
+         script sí: se corre el ts hasta que sea libre. */
+      while (findMsg(conv, null, 'me', ts) >= 0) ts++;
+      conv.messages.push({ from: 'me', text: txt, ts: ts });
+      conv.lastTs = ts;
+      saveChats(store); emit();
+    }
 
-    return sendCloud(peer, String(text), ts).then(function (r) {
+    return sendCloud(peer, txt, ts).then(function (r) {
       if (r && r.ok) {
         var s2 = loadChats(), c2 = conversation(s2, peer);
         var i = findMsg(c2, null, 'me', ts);

@@ -11,8 +11,13 @@
    tags were taken FROM the live dictionary in every language and never
    translated a second time by hand:
      Check-In            → i18nbarrido25.jsx
-     Skip                → i18n-flare8.jsx
-     Next                → i18nlandscape.jsx
+     Next                → i18n-flare8.jsx (defined there AND in
+                           i18nlandscape, which only fills what is
+                           missing, so i18n-flare8 is the one that
+                           RESOLVES: Siguiente · Següent · Suivant ·
+                           Weiter · Avanti · Seguinte · 下一步 · 次へ ·
+                           다음 · आगे · Lanjut · İleri · Далее · Tiếp ·
+                           التالي)
      OK · Journal reminder → i18nckflow.jsx
    Nothing else in these topics quotes a label: a label we cannot check
    in all 16 languages is a label the manual must not type. That is why
@@ -121,22 +126,22 @@
     vi: "Chạm vào câu trả lời — câu hỏi tiếp theo tự đến.",
     ar: "اضغط إجابتك — والسؤال التالي يأتي من تلقاء نفسه.",
   },
-  "Nothing to say about a question? <strong>Skip</strong>, at the bottom, passes it by without recording anything — the skin questions on a day your skin is fine, for example.": {
-    es: "¿No tienes nada que decir en una pregunta? <strong>Saltar</strong>, abajo, la pasa sin registrar nada: las preguntas de la piel un día que la piel está bien, por ejemplo.",
-    ca: "No tens res a dir en una pregunta? <strong>Saltar</strong>, a baix, la passa sense registrar res: les preguntes de la pell un dia que la pell està bé, per exemple.",
-    fr: "Rien à dire sur une question ? <strong>Passer</strong>, en bas, la laisse de côté sans rien enregistrer — les questions sur la peau un jour où votre peau va bien, par exemple.",
-    de: "Zu einer Frage nichts zu sagen? <strong>Überspringen</strong>, unten, geht daran vorbei, ohne etwas zu erfassen — zum Beispiel die Hautfragen an einem Tag, an dem deine Haut ruhig ist.",
-    it: "Non hai nulla da dire su una domanda? <strong>Salta</strong>, in basso, la passa senza registrare niente: le domande sulla pelle in un giorno in cui la pelle sta bene, per esempio.",
-    pt: "Não tens nada a dizer numa pergunta? <strong>Saltar</strong>, em baixo, passa-a sem registar nada — as perguntas da pele num dia em que a tua pele está bem, por exemplo.",
-    zh: "某个问题没什么可说？底部的<strong>跳过</strong>会直接过去，什么都不记录——比如皮肤没事的那天，皮肤的那些问题。",
-    ja: "その質問に言うことがない？下の<strong>スキップ</strong>が、何も記録せずに通り過ぎます — たとえば肌が落ち着いている日の肌の質問。",
-    ko: "어떤 질문에 할 말이 없나요? 아래의 <strong>건너뛰기</strong>가 아무것도 기록하지 않고 지나갑니다 — 예를 들어 피부가 괜찮은 날의 피부 질문처럼요.",
-    hi: "किसी सवाल पर कुछ कहने को नहीं? नीचे <strong>छोड़ें</strong> उसे बिना कुछ दर्ज किए आगे कर देता है — जैसे जिस दिन त्वचा ठीक है, उस दिन त्वचा के सवाल।",
-    id: "Tidak ada yang mau dikatakan pada satu pertanyaan? <strong>Lewati</strong>, di bawah, melewatinya tanpa mencatat apa pun — misalnya pertanyaan kulit pada hari kulitmu baik-baik saja.",
-    tr: "Bir soru için diyecek bir şeyin yok mu? Alttaki <strong>Atla</strong> hiçbir şey kaydetmeden onu geçer — mesela cildinin iyi olduğu bir günde cilt soruları.",
-    ru: "Нечего сказать по вопросу? <strong>Пропустить</strong> внизу проходит мимо, ничего не записывая — например, вопросы о коже в день, когда с кожей всё в порядке.",
-    vi: "Không có gì để nói ở một câu hỏi? <strong>Bỏ qua</strong> ở dưới sẽ đi qua mà không ghi gì — ví dụ các câu về da vào ngày da bạn ổn.",
-    ar: "لا شيء لتقوله في سؤال؟ <strong>تخطٍّ</strong> في الأسفل يمرّ عليه دون تسجيل أي شيء — مثل أسئلة الجلد في يوم يكون جلدك فيه بخير.",
+  "Nothing to say about a question? Tap <strong>Next</strong> anyway: it moves on without recording anything — the skin questions on a day your skin is fine, for example.": {
+    es: "¿No tienes nada que decir en una pregunta? Toca <strong>Siguiente</strong> igualmente: pasa sin registrar nada — las preguntas de la piel un día que la piel está bien, por ejemplo.",
+    ca: "No tens res a dir en una pregunta? Toca <strong>Següent</strong> igualment: passa sense registrar res — les preguntes de la pell un dia que la pell està bé, per exemple.",
+    fr: "Rien à dire sur une question ? Touchez <strong>Suivant</strong> quand même : on passe sans rien enregistrer — les questions sur la peau un jour où votre peau va bien, par exemple.",
+    de: "Zu einer Frage nichts zu sagen? Tippe trotzdem <strong>Weiter</strong>: es geht weiter, ohne etwas zu erfassen — zum Beispiel die Hautfragen an einem Tag, an dem deine Haut ruhig ist.",
+    it: "Non hai nulla da dire su una domanda? Tocca <strong>Avanti</strong> comunque: si passa senza registrare niente — le domande sulla pelle in un giorno in cui la pelle sta bene, per esempio.",
+    pt: "Não tens nada a dizer numa pergunta? Toca em <strong>Seguinte</strong> mesmo assim: passa sem registar nada — as perguntas da pele num dia em que a tua pele está bem, por exemplo.",
+    zh: "某个问题没什么可说？照样按<strong>下一步</strong>：直接过去，什么都不记录——比如皮肤没事的那天，皮肤的那些问题。",
+    ja: "その質問に言うことがない？そのまま<strong>次へ</strong>をタップ。何も記録せずに進みます — たとえば肌が落ち着いている日の肌の質問。",
+    ko: "어떤 질문에 할 말이 없나요? 그래도 <strong>다음</strong>을 누르세요. 아무것도 기록하지 않고 넘어갑니다 — 예를 들어 피부가 괜찮은 날의 피부 질문처럼요.",
+    hi: "किसी सवाल पर कुछ कहने को नहीं? फिर भी <strong>आगे</strong> टैप करें: बिना कुछ दर्ज किए आगे बढ़ जाता है — जैसे जिस दिन त्वचा ठीक है, उस दिन त्वचा के सवाल।",
+    id: "Tidak ada yang mau dikatakan pada satu pertanyaan? Ketuk <strong>Lanjut</strong> saja: pertanyaan itu terlewat tanpa mencatat apa pun — misalnya pertanyaan kulit pada hari kulitmu baik-baik saja.",
+    tr: "Bir soru için diyecek bir şeyin yok mu? Yine de <strong>İleri</strong>'ye dokun: hiçbir şey kaydetmeden geçer — mesela cildinin iyi olduğu bir günde cilt soruları.",
+    ru: "Нечего сказать по вопросу? Всё равно нажмите <strong>Далее</strong>: вопрос будет пройден, и ничего не запишется — например, вопросы о коже в день, когда с кожей всё в порядке.",
+    vi: "Không có gì để nói ở một câu hỏi? Cứ chạm <strong>Tiếp</strong>: nó đi qua mà không ghi gì — ví dụ các câu về da vào ngày da bạn ổn.",
+    ar: "لا شيء لتقوله في سؤال؟ اضغط <strong>التالي</strong> على أي حال: يمرّ عليه دون تسجيل أي شيء — مثل أسئلة الجلد في يوم يكون جلدك فيه بخير.",
   },
   "Where you can tick several answers, tap them all and then <strong>Next</strong>.": {
     es: "Donde puedes marcar varias respuestas, tócalas todas y luego <strong>Siguiente</strong>.",

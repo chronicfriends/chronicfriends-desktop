@@ -219,5 +219,24 @@
   };
 
   window.CFFirebase = API;
+
+  /* BOOT1 (25 sep 2026) — EL AVISO QUE NADIE LANZABA.
+     Siete motores escuchan 'cf-auth-changed' para arrancar en cuanto la sesión
+     está lista (firebase-friends, firebase-directory, firebase-chat,
+     cf-identity, cf-profile-share, revenuecat y design/founderverify)… y ningún
+     código lo emitía. Vivían de UN temporizador fijo de 1,2-2 s tras cargar:
+     si la sesión tardaba más en restaurarse (arranque en frío de un móvil), ese
+     motor no arrancaba en TODA la sesión — solicitudes de amistad invisibles,
+     directorio sin latido, chat parado. Lo cazó el primer usuario real
+     (Historial CF [2540]).
+     onAuthStateChanged salta al restaurarse la sesión, al entrar y al salir;
+     cada vez se avisa, y cada motor decide con su propio active(). Va DESPUÉS
+     de publicar window.CFFirebase, que es lo primero que miran. */
+  try {
+    auth.onAuthStateChanged(function () {
+      try { window.dispatchEvent(new Event('cf-auth-changed')); } catch (e) {}
+    });
+  } catch (e) {}
+
   try { console.log('[CFFirebase] listo · proyecto', firebaseConfig.projectId, '· available=true'); } catch (e) {}
 })();

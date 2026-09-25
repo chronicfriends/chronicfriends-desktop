@@ -42,7 +42,36 @@
     'cf_rating_v1', 'cf_notif_pref_v1', 'cf_notify_country_v1', 'cf_onboarded_v1',
     'cf_scanusage_v1', 'cf_last_export_v1', 'cf_radar_optout_v1', 'cf_member_since_v1',
     'cf_saved_posts_v1', 'cf_drcf_sessions_v1', 'cf_consults_v1', 'cf_consult_invites_v1',
-    'cf_pt_consults_v1', 'cf_doc_live_start_v1', 'cf_doc_req_state_v1', 'cf_best_friends_v1'
+    'cf_pt_consults_v1', 'cf_doc_live_start_v1', 'cf_doc_req_state_v1', 'cf_best_friends_v1',
+
+    /* 🔴 FB21 (16 sep 2026) — LAS CAJAS ANTIGUAS, LAS DEL GUION. Esta lista se
+       escribió el 13 jul con el criterio «cf_algo_v1» y se dejó fuera, sin querer,
+       a las cajas más viejas, que se llaman con guion. Consecuencia: el DIARIO, el
+       registro de comidas, el peso/altura/edad/años y las citas NUNCA salían del
+       teléfono — al entrar con la misma cuenta en otro móvil aparecían vacíos.
+       Lo reportó Gerhard el 16 sep probando la app en sus dos iPhones.
+       🪤 Por qué no se vio en dos meses: 'cf_unified_journal_v1' SÍ está en la lista
+       y suena a «diario unificado»… pero es el INTERRUPTOR de esa función
+       (design/unifiedjournal.jsx:31), no los datos. Al verificar la Fase 3 en el
+       iPhone se miró QUÉ CAJAS aparecían en Firestore, no qué había dentro.
+       La caja cf-hs-purged (sin comillas aquí a propósito, para que ningún barrido
+       que lea esta lista la cuente como incluida) se queda FUERA: es una marca
+       técnica del aparato, no un dato del usuario. */
+    'cf-checkins', 'cf-foodlog', 'cf-profile', 'cf-appointments',
+
+    /* 🔴 FB21, segunda tanda (16 sep 2026, con el «sí» de Gerhard) — SEGURIDAD Y
+       CONSENTIMIENTOS. Que la lista de gente bloqueada no viajara era el peor de
+       los dos: al cambiar de móvil se perdía y esa persona volvía a poder
+       escribirte. Los consentimientos, además, son la prueba de lo que el usuario
+       aceptó, y volver a preguntárselo en cada teléfono no es aceptable.
+       ⚠️ Estas cuatro claves NO llevan el prefijo cfns:<uid>: se guardan igual
+       para todas las cuentas del mismo aparato (así nacieron, ver design/blocks.jsx:11).
+       Sincronizarlas no empeora eso —ya se compartían en el teléfono—, pero si
+       algún día se aíslan por cuenta, hay que revisarlo aquí.
+       cf_reports_queue_v1 se queda FUERA a propósito: es una COLA de denuncias
+       pendientes de enviar, y compartirla haría que dos móviles enviasen la misma. */
+    'cf_blocked_v1', 'cf_muted_content_v1', 'cf_consent_v1', 'cf_health_consent_v1',
+    'cf_age_verified_v1'
   ];
   var HEALTH_SET = {}; HEALTH_KEYS.forEach(function (k) { HEALTH_SET[k] = true; });
 
