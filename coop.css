@@ -191,3 +191,46 @@
 @media (prefers-reduced-motion: reduce){
   .coop-veil,.coop-sheet,.coop-banner,.coop-toast{animation:none;}
 }
+
+/* -------- CICLO 1.0.7 — the real engine: every state is one the engine said --------
+   away: together, but no heartbeat → no ring, no dot, no pulse (never an
+   indicator without a datum). ended: declined / no answer, to be closed.
+   off: a friend who is not in the app right now — shown, never pickable. */
+.coop-away{box-shadow:inset 0 0 0 1px var(--coop-line);}
+.coop-ended{background:var(--coop-surface);box-shadow:inset 0 0 0 1px var(--coop-line);}
+.coop-ended .coop-conn-n{white-space:normal;overflow:visible;line-height:1.35;}
+.coop-person.off{cursor:default;opacity:.55;}
+.coop-person.off:hover{background:var(--coop-surface);}
+.coop-find{display:inline-flex;align-items:center;justify-content:center;gap:7px;margin:12px auto 0;cursor:pointer;font-family:inherit;
+  padding:10px 16px;border-radius:13px;font-size:13px;font-weight:800;border:1px solid var(--coop-line);background:var(--coop-surface-2);color:var(--coop-text);}
+.coop-find svg{color:var(--coop-accent);flex:none;}
+.coop-empty-inline{padding:14px 12px 8px;}
+.coop-fail{font-size:12px;font-weight:700;line-height:1.45;color:var(--coop-text);text-align:center;margin:10px 6px 0;}
+.coop-banner-join:disabled,.coop-banner-decline:disabled,.coop-banner-x:disabled{opacity:.55;cursor:default;}
+
+/* -------- CICLO 1.0.7b — the invitation on any screen, and the way back to a session --------
+   inhost: the incoming banner, mounted ONCE in app.jsx, floats over whatever
+   screen the friend is on: above the rooms (nc-veil 150 · rf2-full 125), the
+   sheets and the evening flow (145), below the invite sheet (320) and the
+   toast (400). Its top clears the notch of the design host (46 px) and the
+   status bar of a phone (--cf-sat on Android, env() on iOS).
+   note: why a ritual of the other mode can only be declined — full ink, it
+   is the sentence that explains the missing button.
+   else: «You’re together with {name} in {tool}», drawn once per screen, the
+   sentence wraps instead of being cut; «Go there» is marked by the accent
+   on its edge, its text stays full ink (white on a light accent would not
+   read).
+   lift: a Flare room that «Join» opened comes to the front — its own 125
+   sits under Settings, the sheets and the evening flow. */
+.coop-inhost{position:absolute;left:10px;right:10px;top:max(46px,calc(8px + var(--cf-sat,env(safe-area-inset-top,0px))));z-index:300;}
+.coop-inhost .coop-banner{margin:0;}
+.coop-banner-t .coop-banner-note{font-size:11.5px;font-weight:700;line-height:1.4;color:var(--coop-text);margin-top:5px;}
+.coop-banner-decline.wide{flex:1;}
+.coop-else-bar{margin:4px 0 14px;}
+.coop-else{flex-wrap:wrap;row-gap:10px;}
+.coop-else .coop-conn-t{flex:1 1 170px;}
+.coop-else .coop-conn-n{white-space:normal;overflow:visible;line-height:1.35;}
+.coop-else .coop-else-why{display:block;line-height:1.4;}
+.coop-else-actions{display:flex;gap:8px;margin-inline-start:auto;}
+.coop-go{border-color:color-mix(in oklab,var(--coop-accent) 70%,transparent);background:color-mix(in oklab,var(--coop-accent) 16%,var(--coop-surface));}
+.rf2-full.coop-lift{z-index:146;}

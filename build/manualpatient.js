@@ -141,9 +141,10 @@ function cfManualPatient() {
          translated a second time by hand.
          TAP20 (16 Sep 2026): the screen no longer moves on by itself, so the
          body and the second step now NAME the foot button. «Next» is typed
-         here with the word the LIVE dictionary resolves (i18n-flare8, which
-         i18nlandscape can no longer overwrite because it only fills what is
-         missing) — the same word step 4 has shipped since 8 Sep.
+         here with the word the LIVE dictionary resolves — i18n-flare8 loads
+         before i18nlandscape and i18nlandscape only fills what is missing,
+         so Avanti · Weiter · Seguinte · 下一步 · Аге … are the resolved
+         values (the same ones step 4 has shipped since 8 Sep).
          TAP22 (17 Sep 2026): the pill always reads Next, so the third step
          names it too and «Skip» is gone from this chapter (the «Skipped» of
          the medication topics is a missed dose, another thing entirely, and
@@ -151,7 +152,7 @@ function cfManualPatient() {
          NO shot: — no capture of the grouped flow exists yet. */
       { title: tr('Your evening, screen by screen'),
         where: [tr('Journal'), tr('Check-In')],
-        body: tr('In the evening your reminder opens the quick way to log a day: the same cards you already know from your journal, <strong>one group per screen</strong> — how you feel, your day, your habits, the people around you, then each of your trackers. Ten to fifteen screens; when you are done with one, tap <strong>Next</strong> — nothing moves until you do. Nothing to scroll, and the keyboard stays shut unless you open it.'),
+        body: tr('In the evening your reminder opens the quick way to log a day: the same cards you already know from your journal, <strong>one group per screen</strong> — how you feel, your day, your habits, the people around you, then each of your trackers. When you are done with a screen, tap <strong>Next</strong> — nothing moves until you do. Nothing to scroll, and the keyboard stays shut unless you open it.'),
         problem: tr('The comfortable way to log a day used to be a blue button that copied yesterday: two taps for twenty-three answers nobody had read, feeding your charts and the report your doctor reads with a day that had not been lived. Now the comfortable way is also the true one — 30 to 60 seconds, every answer yours.'),
         steps: [
           tr('Tap the notification in the evening, or the bell beside your check-in button, and the first question appears.'),
@@ -300,7 +301,7 @@ function cfManualPatient() {
           tr('On Home, tap <strong>Food Scan</strong>, then <strong>Scan barcode</strong>.'),
           tr('Point at the product\u2019s barcode and review its real ingredients and nutrition.'),
           tr('Or tap <strong>Add manually</strong> — and find everything again in the <strong>Food calendar</strong>.')],
-        tip: tr('Your photo is analysed and then forgotten — it is never stored. Five barcode scans a month are free; Premium scans without a limit.') },
+        tip: tr('Your photo is analysed and then forgotten — it is never stored. Five barcode scans a month are free; Premium takes that counter off.') },
     ] },
 
   /* ---------- 7. MEDICATION ---------- */
@@ -400,7 +401,7 @@ function cfManualPatient() {
       { title: tr('Which eye — and the bottle that empties twice as fast'),
         where: [tr('Medication')],
         body: tr('Eye drops arrive with <strong>no dose written in</strong>: how many drops, and in which eye, is your prescription — not something the app may assume. When you activate a drop, or edit it later, you pick <strong>Right eye</strong>, <strong>Left eye</strong>, <strong>Both eyes</strong> or <strong>Not specified</strong>, and nothing is selected for you. Whatever you choose then travels with the dose everywhere it is shown: the medication card, the alarm, the dose log and the PDF your ophthalmologist reads. Choose <strong>Both eyes</strong> and the app also counts <strong>two drops per dose</strong> against your bottle, because that is what really leaves it.'),
-        problem: tr('Anterior uveitis is usually one eye, so a pre-written \u201c1 drop each eye\u201d was the app stating a clinical fact you never gave it \u2014 the same reason your weight and age stay empty until you fill them in. And counting one drop when you use two is not a rounding error: a 5 ml bottle holds roughly 100 drops, so at eight doses a day it empties around day 12, not day 24 \u2014 halfway through a five-week taper, with a weekend in between.'),
+        problem: tr('Anterior uveitis is usually one eye, so a pre-written \u201c1 drop each eye\u201d was the app stating a clinical fact you never gave it \u2014 the same reason your weight and age stay empty until you fill them in. And counting one drop when you use two is not a rounding error: the bottle runs out in half the time you were counting on \u2014 in the middle of a taper, with a weekend in between.'),
         steps: [
           tr('Activate an eye drop, or open it and tap <strong>Which eye?</strong>'),
           tr('Pick the side your prescription says \u2014 or leave it <strong>Not specified</strong>.'),
@@ -410,7 +411,7 @@ function cfManualPatient() {
       { title: tr('Check your reminders will arrive'),
         shot: 'img-notifhealth.png',
         where: [tr('Medication')],
-        body: tr('A reminder that never rings is worse than no reminder at all \u2014 and every Android phone hides the switches somewhere different. In <strong>Medication</strong>, open <strong>Will your reminders reach you?</strong>: the screen names your own next dose \u2014 the medicine and the hour \u2014 and answers in three words, <strong>It will sound</strong> or <strong>It will NOT sound</strong>. When something is blocking it there is a single button, <strong>Fix it now</strong>, which opens the exact screen on your phone for that one problem; solve it and the next one, if there is one, takes its place. <strong>Ring it now, so you hear it</strong> makes your phone ring on the spot, so you never have to take our word for it. Everything the app looked at \u2014 notifications, exact timing, battery saving, the reminder sound, the note for Xiaomi, Huawei, OPPO and vivo phones, and how many reminders this phone is holding \u2014 is folded under <strong>See what was checked</strong>. If your phone cannot deliver them, a small card on the Medication screen says so.'),
+        body: tr('A reminder that never rings is worse than no reminder at all \u2014 and every Android phone hides the switches somewhere different. In <strong>Medication</strong>, open <strong>Will your reminders reach you?</strong>: the screen names your own next dose \u2014 the medicine and the hour \u2014 and answers plainly, <strong>It will sound</strong> or <strong>It will NOT sound</strong>. When something is blocking it there is a single button, <strong>Fix it now</strong>, which opens the exact screen on your phone for that one problem; solve it and the next one, if there is one, takes its place. <strong>Ring it now, so you hear it</strong> makes your phone ring on the spot, so you never have to take our word for it. Everything the app looked at \u2014 notifications, exact timing, battery saving, the reminder sound, the note for Xiaomi, Huawei, OPPO and vivo phones, and how many reminders this phone is holding \u2014 is folded under <strong>See what was checked</strong>. If your phone cannot deliver them, a small card on the Medication screen says so.'),
         problem: tr('Silence is the one failure this app cannot afford, and we cannot guess how your phone is configured \u2014 so the app asks it and tells you honestly. On Xiaomi, Huawei, OPPO and vivo phones a short note points at the setting that stops apps in the background. Nothing we do not know is ever shown as a problem.'),
         steps: [
           tr('In <strong>Medication</strong>, tap <strong>Will your reminders reach you?</strong>'),
@@ -452,12 +453,46 @@ function cfManualPatient() {
           tr('To fall asleep with it, choose <strong>Stop after 15 min</strong>, 30 or 60: the music fades away on its own. Tap the same button again to cancel it.'),
           tr('Leave the room or lock the phone and the music keeps playing; the <strong>Meditation</strong> card on Home then says <strong>Playing</strong> to take you back to it.')],
         tip: tr('The four pieces are other people’s work, shared under a Creative Commons licence: <strong>Credits</strong>, under the list, names every author and links to the original video.') },
+
+      /* CICLO 1.0.7 (25 Sep 2026) — «Together», real at last. Every claim was
+         verified against coop.jsx and the engine's contract (webapp/vendor/
+         firebase-coop.js lives outside design/): only a friend who is REALLY
+         online can be picked (roster().online === true), each person does the
+         ritual on their own phone and nothing is synchronised, the only thing
+         shared is presence (the orb exists only while session.partnerPresent
+         is true — a heartbeat younger than 45 s, re-read every 5 s, hence
+         «within a minute»), there are no push notifications, and an
+         invitation expires after 2 minutes. Every <strong> label is the live
+         dictionary's own word (Join with another user · Leave → i18ncoop;
+         Meditation → i18n-flare3). Strings in i18nmanual2026al.
+         NO shot: — no capture of the real layer exists yet.
+         CICLO 1.0.7b (26 Sep 2026) — verified against coop.jsx again: the
+         invitation banner is mounted ONCE in app.jsx, so it reaches the
+         friend on ANY screen (no longer «inside Meditation»), and joining
+         takes them into the ritual (coopGo); a flare ritual (rx-*) is only
+         joined in Flare Mode and the others outside it; what travels is the
+         name and photo (the banner draws the sender's avatar), the ritual and
+         the light — not only the light; a line at the top of Meditation /
+         the Flare room offers «Go there» (→ i18ncoop) beside «Leave»; a
+         friend who accepted but has not come in is waited for
+         (session.partnerArrived), never «stepped away». Step 2's broken
+         English was re-keyed with its 15 translations moved untouched. */
+      { title: tr('Together with a friend'),
+        where: [tr('Home'), tr('Meditation')],
+        body: tr('Inside a Meditation ritual, <strong>Join with another user</strong> invites a friend to do it at the same time as you. Each of you does the ritual on your own phone — nothing is synchronised, not the music and not the breathing — and while you are both there, a small light with your friend’s name drifts across your screen. Only your name and photo, the ritual you invite to and that light travel between you: nothing else of yours is shared.'),
+        problem: tr('A hard evening is lighter with company, but a call is not always possible and a video is too much. Being in the same quiet room, each on your own sofa, can be enough — and nobody is ever shown who is not really there: the light appears only while your friend really is.'),
+        steps: [
+          tr('Open a ritual in <strong>Meditation</strong> and tap <strong>Join with another user</strong>.'),
+          tr('Pick a friend who has the app open right now. Friends who do not have it open appear switched off: there are no notifications, so an invitation could never reach them.'),
+          tr('Your friend sees the invitation on any screen of the app and joins or declines; joining takes them straight into the ritual. The rituals of Flare Mode can only be joined in Flare Mode, and the others only outside it. If nobody answers, it expires after 2 minutes.'),
+          tr('<strong>Leave</strong> ends it whenever you want. If you wander into another ritual, a line at the top says where you are together, with <strong>Go there</strong> to take you back.')],
+        tip: tr('Until your friend is in the ritual, a line says you are waiting for them. If they leave it or close the app, their light disappears within a minute and a quiet line says they stepped away — the app never keeps a light on for someone who is not there.') },
     ] },
 
   /* ---------- 9. ENTERTAINMENT ---------- */
   { id: 'games', icon: 'tv', grad: ['#62b5f0', '#2f7fd4'],
     title: tr('Entertainment'),
-    intro: tr('Ten little offline games to rest and unwind with — gentle, private, never scored against you.'),
+    intro: tr('Little offline games to rest and unwind with — gentle, private, never scored against you.'),
     topics: [
       { title: tr('Games for the hard hours'),
         shot: 'img-entertainment.png',
@@ -516,7 +551,7 @@ function cfManualPatient() {
 
       { title: tr('Your steps on Home'),
         where: [tr('Home'), tr('Steps today')],
-        body: tr('Just above the <strong>Check-In</strong> button, Home always shows <strong>Steps today</strong>, and that number is a button: tap it and the <strong>Step tournament</strong> opens, with its four periods — today, this week, this month and this year. It opens with or without a health app connected: you read the whole table, you are simply not in it, and a line inside offers to connect your steps. With no number the card shows a dash, never a zero, and it says which of the two silences it is: nothing connected, or nothing recorded today.'),
+        body: tr('Just above the <strong>Check-In</strong> button, Home always shows <strong>Steps today</strong>, and that number is a button: tap it and the <strong>Step tournament</strong> opens, with its four periods — today, this week, this month and this year. It opens with or without a health app connected: you read the whole table, you are simply not in it, and a line inside offers to connect your steps. With no number the card shows a dash, never a zero, and a short line says why: nothing connected, or nothing recorded today.'),
         problem: tr('The tournament was already inside the app and nobody could reach it: the only door was four taps deep in Settings, and it vanished completely for anyone who had not connected a health app. A number sitting on Home, that opens when you tap it, is a door.'),
         tip: tr('A dash means we do not know — never that you walked nothing. The app never shows a number your phone did not give it.') },
 
@@ -613,7 +648,7 @@ function cfManualPatient() {
       { title: tr('Blocking or reporting a person'),
         where: [tr('Community'), tr('All people')],
         body: tr('Open a person’s profile — from the list, from a post or from a comment — and under the friendship button there are two quiet buttons. <strong>Block user</strong> hides that person from you everywhere: their posts, their comments and their messages. It is always reversible, under <strong>Blocked users</strong> in <strong>Settings</strong>. <strong>Report user</strong> sends our team a reason — dangerous medical advice, harassment, spam or something else — and anything you want to add. The person is never told, and reporting does not hide them: if you also want them out of your app, block them as well.'),
-        problem: tr('Safety cannot wait for a friendship. Anyone whose name and photo you can see in the list, you can also block or report from the same card, in two taps, without explaining yourself to anybody.'),
+        problem: tr('Safety cannot wait for a friendship. Anyone whose name and photo you can see in the list, you can also block or report from that same card, without explaining yourself to anybody.'),
         tip: tr('Reporting is a safety tool, not an accusation — our team reads every report and decides what to do with it.') },
 
       { title: tr('The step tournament'),
@@ -623,7 +658,11 @@ function cfManualPatient() {
         steps: [
           tr('Open <strong>Settings \u203a Health data</strong> and tap the <strong>Steps</strong> number.'),
           tr('Read what would be published, then choose <strong>Take part</strong> \u2014 or <strong>Just have a look</strong>.'),
-          tr('Switch between <strong>Friends</strong> and <strong>Global</strong>, and between <strong>Today</strong>, <strong>Week</strong>, <strong>Month</strong> and <strong>Year</strong>.')],
+          tr('Switch between <strong>Friends</strong> and <strong>Global</strong>, and between <strong>Today</strong>, <strong>Week</strong>, <strong>Month</strong> and <strong>Year</strong>.'),
+          /* CICLO 1.0.7 §2 — each row now says how old it is (stepsboard.jsx
+             sbAgo, from the engine's updatedAt); a runtime-built word like
+             «5 min ago» is never quoted. Strings in i18nmanual2026al. */
+          tr('Under each number, a small grey line says when that row was last updated — each person’s steps travel only when that person opens the app, so a row can be a little behind.')],
         tip: tr('It is a game, not a target: nobody is ever called last, and on a flare day a small number is simply a small number.') },
     ] },
 
@@ -681,7 +720,7 @@ function cfManualPatient() {
           tr('Coming back to the same room within <strong>30 minutes</strong> is the same session — it does not spend another use. Food Scan is the exception: a scan is a scan.'),
           tr('The table of plans starts with the <strong>Free plan</strong>: <strong>Forever</strong>, <strong>Free</strong>, and nothing to tap because there is nothing to buy. A discreet <strong>Your plan</strong> marks the one you are on.'),
           tr('The four plans carry the price <strong>the store</strong> will charge, in your currency; tapping one opens the purchase sheet, where Apple or Google take over. <strong>Restore purchase</strong> is on the same screen.')],
-        tip: tr('If your access was a gift — a pioneer year — the sheet says so first, with the date, and tells you there is nothing to buy today.') },
+        tip: tr('If your access was a gift — as a pioneer — the sheet says so first, with the date, and tells you there is nothing to buy today.') },
     ] },
 
   /* ---------- 15. SETTINGS & PRIVACY ---------- */

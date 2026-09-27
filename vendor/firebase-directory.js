@@ -211,14 +211,19 @@
      punto verde. ONLINE_MS es MAYOR que LATIDO_MS a proposito: si fueran
      iguales, la ficha parpadearia entre «en linea» y «desconectado» solo por
      el retardo de la red. */
-  var LATIDO_MS = 5 * 60 * 1000;    /* una escritura cada 5 min de uso real */
-  var ONLINE_MS = 12 * 60 * 1000;   /* «en linea» = visto hace menos de 12 min */
+  /* 26 sep 2026 (decision de Gerhard tras la auditoria, Historial CF [2560]):
+     de 5/12 min a 1/3 min. Con 12 min, «En linea ahora» en la hoja de «Juntos»
+     queria decir «uso la app hace un rato», y una invitacion a alguien que ya la
+     habia cerrado caducaba sin que la viese. */
+  var LATIDO_MS = 60 * 1000;        /* una escritura por minuto de uso real */
+  var ONLINE_MS = 3 * 60 * 1000;    /* «en linea» = visto hace menos de 3 min */
   var latidoTimer = null;
 
-  /* 💰 COSTE: una escritura por persona y por cada 5 minutos con la app
-     ABIERTA Y DELANTE. Con la app en segundo plano no se escribe nada — de ahi
-     el visibilityState. Es el precio de que el punto verde diga la verdad; si
-     algun dia molesta, se sube LATIDO_MS y ya. */
+  /* 💰 COSTE: una escritura por persona y por cada MINUTO con la app ABIERTA Y
+     DELANTE. Con la app en segundo plano no se escribe nada — de ahi el
+     visibilityState. Cuentas: 100 personas × 20 min al dia = 2.000 escrituras,
+     un 10 % del cupo gratis diario de Firestore. Es el precio de que el punto
+     verde diga la verdad; si algun dia molesta, se sube LATIDO_MS y ya. */
   function latido() {
     if (!active()) return;
     try { if (document.visibilityState !== 'visible') return; } catch (e) {}

@@ -171,7 +171,13 @@
       }
       var ts = now();
       ST().set(path, { key: fullKey, value: cloudVal, ts: ts, updatedAt: ST().serverTime() }).then(function (r) {
-        if (r && r.ok) { meta[base] = ts; saveMeta(meta); return; }
+        /* 🔴 FB22 (26 sep 2026) — se RELEE el diario de sincronización al confirmar.
+           Antes se guardaba la copia leída ANTES de subir: si mientras tanto una foto de
+           la nube había apuntado otras cajas, esta confirmación las «olvidaba», y la foto
+           siguiente devolvía al móvil un valor VIEJO por encima del nuevo. Así volvía la
+           bienvenida (prueba de dos cuentas, 1 de 6 pasadas, Historial [2563]) y así se
+           podía perder la última respuesta del diario. Banco: tools/tests/bienvenida-sync-harness.mjs */
+        if (r && r.ok) { var m2 = loadMeta(); m2[base] = ts; saveMeta(m2); return; }
         /* rechazo por reglas: el token puede llevar claims viejos (email_verified
            tras verificar una cuenta nueva). Refresca el token y reintenta 1 vez. */
         if (!isRetry && r && String(r.code).indexOf('permission-denied') >= 0) {
@@ -246,7 +252,14 @@
         if (cloudTs > localTs && d.key) {
           var incoming = toLocalValue(base, d.value);   /* FB13: URL de foto lista para <img> */
           var localVal = null; try { localVal = localStorage.getItem(d.key); } catch (e) {}
-          if (localVal !== incoming) { applyDown(d.key, incoming); }
+          if (localVal !== incoming) {
+            /* 🔒 FB22 — la marca de la bienvenida solo va HACIA DELANTE. Un móvil nuevo
+               escribe un «0» provisional al iniciar sesión (enterReturning) y puede subirlo
+               antes de haber visto la nube; ese «0» nunca deshace aquí un «1»: se ignora y
+               se vuelve a subir el «1» para curar la nube. */
+            if (base === 'cf_onboarded_v1' && localVal === '1') { pending[d.key] = true; scheduleFlush(); }
+            else applyDown(d.key, incoming);
+          }
           meta[base] = cloudTs; saveMeta(meta);
         }
       });

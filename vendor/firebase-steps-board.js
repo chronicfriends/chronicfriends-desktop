@@ -25,7 +25,12 @@
    lo que haya en el espejo (hasta 30 días) y a partir de ahí crece solo.
 
    EN LA NUBE (contrato exacto de firestore.rules, bloque GAM1) — UN SOLO DOC:
-     steps_board/{uid}   { name, avatar?, d,dKey, w,wKey, m,mKey, y,yKey, updatedAt }
+     steps_board/{uid}   { name, avatar?, d,dKey, w,wKey, m,mKey, y,yKey, updatedAt, dataTs? }
+     dataTs (1.0.7, 26 sep 2026) = la hora en que el TELÉFONO entregó esos pasos.
+     Es lo único que la tabla enseña como «hace X». updatedAt no sirve para eso:
+     los móviles con la 1.0.6 o anterior escriben ahí la hora de PUBLICAR, y con
+     ella la 1.0.7 diría «ahora mismo» junto a pasos viejos (el caso de Alex).
+     Fila sin dataTs → sin hora. Auditoría del 26 sep, Historial CF [2560].
 
    🔒 DE TU SALUD SALEN CUATRO NÚMEROS Y NADA MÁS (decisión de Gerhard, 22 ago
    2026, opción B). Hubo una versión que subía además el desglose DÍA A DÍA a un
@@ -51,8 +56,10 @@
                            · null si no hay NI UN día con dato
                            · el periodo sin ningún día vale undefined, nunca 0
      .sync()             → Promise: recalcula desde el espejo y publica
-     .top(periodo,ámbito)→ Promise<[{uid,name,avatar,n,me}]>
+     .top(periodo,ámbito)→ Promise<[{uid,name,avatar,n,me,updatedAt}]>
                            periodo 'd'|'w'|'m'|'y' · ámbito 'global'|'friends'
+                           updatedAt = de cuándo son esos pasos (ms, sale de
+                           dataTs) o null si no se sabe: entonces no se pinta
      ._start() ._stop()  → arranque/parada manual (para los arneses)
    ===================================================================== */
 (function () {
@@ -237,6 +244,26 @@
       .catch(function () { return null; });
   }
 
+  /* GAM3 (25 sep 2026) — ¿DE CUÁNDO SON ESTOS NÚMEROS? updatedAt decía «cuándo
+     se publicó», y sync() también corre cuando solo cambia el ESTADO de Salud
+     (al volver a la app el móvil reenvía el estado): se republicaban los pasos
+     VIEJOS con la hora NUEVA. Alex vio a las 22:46 los 161 pasos que Gerhard
+     tenía a las 06:48. Ahora updatedAt es la hora en que el teléfono entregó
+     datos por última vez (cf_healthsync_v1.lastDataTs, que escribe _data en
+     healthsync.jsx); solo si no la hay, la de ahora. */
+  function frescura() {
+    var s = leer(HS_STATE);
+    var t = s && Number(s.lastDataTs);
+    return (t && isFinite(t) && t > 0 && t <= now() + 60000) ? t : now();
+  }
+  /* dataTs: la misma hora, pero SOLO si el teléfono la sabe. Sin ella no se
+     escribe (la tabla no pinta hora), nunca «ahora» por defecto. */
+  function horaDatos() {
+    var s = leer(HS_STATE);
+    var t = s && Number(s.lastDataTs);
+    return (t && isFinite(t) && t > 0 && t <= now() + 60000) ? Math.min(t, now()) : null;
+  }
+
   function sync() {
     if (!active()) return Promise.resolve({ ok: false, code: 'unavailable' });
     if (!enabled()) return Promise.resolve({ ok: false, code: 'off' });
@@ -256,8 +283,10 @@
         w: t.w, wKey: k.w,
         m: t.m, mKey: k.m,
         y: t.y, yKey: k.y,
-        updatedAt: now()
+        updatedAt: frescura()
       };
+      var hd = horaDatos();
+      if (hd) doc.dataTs = hd;
       var av = (p && p.avatar) ? String(p.avatar).slice(0, 512) : null;
       if (av) doc.avatar = av;
       /* 🔒 Aquí NO se sube nada más. El desglose por días se queda en el
@@ -278,6 +307,11 @@
       uid: doc._id,
       name: doc.name || '',
       avatar: doc.avatar || null,
+      /* GAM3: de cuándo es el número (ms). Sale de dataTs, que solo escribe la
+         1.0.7 en adelante (ver cabecera): una fila de un móvil con la 1.0.6 no
+         lo trae y va SIN hora. Sin dato, null: la interfaz no pinta ninguna
+         hora — nunca se inventa. */
+      updatedAt: (typeof doc.dataTs === 'number' && isFinite(doc.dataTs) && doc.dataTs > 0) ? doc.dataTs : null,
       n: 0,
       me: doc._id === me
     };
@@ -314,7 +348,7 @@
       return ST().get(COL + '/' + id).then(function (d) {
         if (!d) return null;
         if (d[clave] !== k) return null;        /* su dato es de otro periodo */
-        var f = fila({ _id: id, name: d.name, avatar: d.avatar }, me);
+        var f = fila({ _id: id, name: d.name, avatar: d.avatar, updatedAt: d.updatedAt, dataTs: d.dataTs }, me);
         f.n = d[campo] || 0;
         return f;
       }).catch(function () { return null; });
@@ -353,6 +387,20 @@
   /* cada vez que el teléfono manda datos nuevos, se republica */
   try { window.addEventListener('cf-hs-changed', function () { if (enabled() && hasSteps()) sync(); }); } catch (e) {}
   try { start(); } catch (e) {}
+
+  /* GAM3 (25 sep 2026) — LA HOJA ABIERTA SE REFRESCA SOLA. La hoja del torneo
+     (design/stepsboard.jsx) lee la tabla al abrirse y solo se repinta con
+     'cf-steps-board'; ese aviso solo salía con MIS publicaciones, así que lo que
+     publicaban los demás no llegaba mientras la tenías abierta. Cada minuto con
+     la app delante, y al volver a ella, se avisa: si la hoja no está abierta,
+     nadie escucha y no cuesta nada. */
+  var REFRESCO_MS = 60 * 1000;
+  function avisarTabla() {
+    try { if (document.visibilityState && document.visibilityState !== 'visible') return; } catch (e) {}
+    try { window.dispatchEvent(new CustomEvent('cf-steps-board')); } catch (e) {}
+  }
+  try { setInterval(avisarTabla, REFRESCO_MS); } catch (e) {}
+  try { document.addEventListener('visibilitychange', avisarTabla); } catch (e) {}
 
   try { console.log('[CFStepsBoard] listo · torneo de pasos'); } catch (e) {}
 })();

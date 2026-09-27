@@ -273,12 +273,35 @@
       var mine = d.senderUid === me;
       var ts = d.createdAt || now();
       var i = findMsg(conv, cid, mine ? 'me' : 'them', ts);
+      /* CHAT12 (27 sep 2026): el Firestore de verdad avisa a la escucha con MI mensaje
+         pendiente ANTES de que la escritura vuelva del servidor, cuando la copia local
+         aún no tiene cid. Sin esto, se metía una segunda copia: «Lalikas» salía doblado
+         en la pantalla de quien lo escribe (en la nube había uno). Se adopta la copia
+         local SIN cid que tenga el mismo autor y el mismo ts (el ts de lo mío es único
+         por conversación: send() lo corre hasta que queda libre). */
+      if (i < 0) {
+        for (var k = conv.messages.length - 1; k >= 0; k--) {
+          var q = conv.messages[k];
+          if (q && !q.cid && q.from === (mine ? 'me' : 'them') && q.ts === ts) { i = k; break; }
+        }
+      }
       if (i >= 0) { if (!conv.messages[i].cid) { conv.messages[i].cid = cid; changed = true; } return; }
       conv.messages.push({ from: mine ? 'me' : 'them', text: String(d.text), ts: ts, cid: cid });
       if (!mine) conv.unread = (conv.unread || 0) + 1;
       if (ts > (conv.lastTs || 0)) conv.lastTs = ts;
       changed = true;
     });
+    /* CHAT12 · y lo que YA salió doblado en un móvil se arregla solo aquí: fuera las
+       copias con el mismo cid y las huérfanas (sin cid) de un mensaje que ya lo tiene. */
+    var vistos = {}, conCid = {}, limpios = [];
+    conv.messages.forEach(function (m) { if (m && m.cid) conCid[m.from + '|' + m.ts] = 1; });
+    conv.messages.forEach(function (m) {
+      if (!m) return;
+      if (m.cid) { if (vistos[m.cid]) { changed = true; return; } vistos[m.cid] = 1; }
+      else if (conCid[m.from + '|' + m.ts]) { changed = true; return; }
+      limpios.push(m);
+    });
+    conv.messages = limpios;
     if (!changed) return;
     conv.messages.sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
     if (conv.messages.length > LIMIT) conv.messages = conv.messages.slice(-LIMIT);

@@ -7,7 +7,7 @@
    NH1-B (15 Aug 2026) — ONE alarm, ONE answer, ONE button. The screen is
    built around the patient's OWN next dose (name + hour, from the shared
    cfNextDose() in meds.jsx — never a second schedule calculation), then
-   says in three words whether it will sound, and offers at most one fix
+   says plainly whether it will sound, and offers at most one fix
    plus "ring it now". The four technical checks, the manufacturer note
    and the scheduled-count line are all folded under "See what was
    checked": still there, no longer the first thing a frightened person

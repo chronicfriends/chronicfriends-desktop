@@ -221,8 +221,9 @@ return out;}/* THE taper writer — sibling of cfMedSchedWrite, which stays exac
    with no suffix: absence is printed as absence. */function cfMedDoseLabel(m){const d=m&&m.dose;const s=d?window.tr?tr(d):d:window.tr?tr('as prescribed'):'as prescribed';const base=d&&window.cfDoseText?cfDoseText(s):s;const eye=cfMedEyeLabel(cfMedEye(m));if(!eye)return base;return window.trf?trf('{dose} · {eye}',{dose:base,eye}):base+' · '+eye;}/* MED17 — how many units ONE dose really consumes. unitsOf() reads the
    first number in the dose text, which is right for a tablet and wrong
    for a bottle: a drop in BOTH eyes is two drops out of the bottle. With
-   ~100 drops in a 5 ml bottle at 8 doses a day that is the difference
-   between running out on day 12 and believing you have until day 24.
+   ~100 drops in a 5 ml bottle, 4 doses a day in both eyes take 8 drops,
+   not 4: the difference between running out around day 12 and believing
+   you have until day 25 (CICLO 1.0.7: the old «8 doses» doubled both).
    'both' → 2× the typed number; 'right'/'left'/null → the typed number
    (today's behaviour, unchanged for every existing account). The stock
    RULE (MED8) is untouched — only the units-per-dose figure changes. */function cfMedUnitsPerDose(m){const n=cfDoseUnits(m&&m.dose);return cfMedEye(m)==='both'?n*2:n;}/* MED7: THE clock for a scheduled dose time — 12h/24h by language and
