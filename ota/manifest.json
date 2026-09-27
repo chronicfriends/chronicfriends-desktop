@@ -1,0 +1,18 @@
+{
+  "web": {
+    "version": "2026-09-27-1335",
+    "file": "webapp-2026-09-27-1335.zip",
+    "size": 12194341,
+    "md5": "fb2b5e3b4ac0f9cf6a45b9285cbc6d88",
+    "minNative": "1.0.7"
+  },
+  "native": {
+    "ios": {
+      "latest": "1.0.8"
+    },
+    "android": {
+      "latest": "1.0.7"
+    }
+  },
+  "published": "2026-09-27 17:09"
+}
