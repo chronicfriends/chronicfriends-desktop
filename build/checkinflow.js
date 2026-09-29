@@ -53,8 +53,38 @@
 const{useState:useCkfS,useEffect:useCkfE}=React;
 const CKF_POS_KEY='cf_ckflow_pos_v1';
 /* the five flare areas the journal has always stored in `flareTypes`
-   (RF_FT_MAP, flaremode.jsx — same spelling, same 16 translations) */
+   (RF_FT_MAP, flaremode.jsx — same spelling, same 16 translations).
+   CICLO 1.0.7f §2 (28 Sep 2026): they are no longer offered to everybody —
+   they are the IBD five, kept exactly as they were (keys, order, words). */
 const CKF_FLARE_TYPES=['Diarrhea','Uveitis','Arthritis','Dermatitis','Psoriasis'];
+/* ---------- CICLO 1.0.7f §2 — THE AREAS OF THE PERSON'S OWN ILLNESS ----------
+   A new user who lives with something else said «Yes» to a flare-up and was
+   offered Diarrhea · Uveitis · Arthritis · Dermatitis · Psoriasis: the list of
+   an illness she does not have. The areas now follow the conditions she chose
+   (CFModules.get().conditions), the way the pulse question already does
+   (CKQ_BY_CONDITION, checkinpulse.jsx):
+     • a condition (exact SM_CONDITIONS spelling) → one or more groups;
+     • several conditions → the union, the first condition first (the
+       principal leads, as everywhere in the app), a word only once;
+     • none, «Other / not listed» or a name this table does not know → the
+       general set.
+   Every word is the app's OWN flare vocabulary (FLARE_SYM_SETS and
+   RFS_SYMPTOMS of flaremodestory.jsx, the trackers), already translated in
+   16 languages; the six it lacked live in i18nciclo107f.jsx. Patient words,
+   never a diagnosis: the IBD five are the only clinical names left, and they
+   stay because they are what those days already hold.
+   🔴 A STORED VALUE NEVER CHANGES ITS NAME: `flareTypes` keeps English keys
+   and what the language changes is what is SHOWN (tx()). A value a day
+   already holds that this person is no longer offered stays in the row, lit
+   (CkfFlareTypes, checkinflowrows.jsx), so a change of condition never shows
+   a saved day emptier than it is. The HBI prefill (activityindex.jsx) still
+   reads only Uveitis and Arthritis: the IBD indices do not move. */
+const CKF_FLARE_GROUPS={ibd:CKF_FLARE_TYPES,gut:['Abdominal pain','Bloating or gas','Diarrhea','Constipation','Nausea or vomiting'],joints:['Joint pain','Joint swelling','Morning stiffness','Deep fatigue'],back:['Back pain','Neck pain','Morning stiffness','Pain with movement'],widespread:['Pain all over','Deep fatigue','Poor sleep','Brain fog'],eds:['Joint pain','Muscle aches','Deep fatigue','Dizziness or lightheadedness'],lupus:['Joint pain','Rash or patches','Mouth sores','Deep fatigue'],sjogren:['Eye dryness','Dry mouth','Joint pain','Deep fatigue'],skin:['Itchy skin','Rash or patches','Scaling or flaking','Skin pain or burning'],eyes:['Eye pain','Eye redness','Light sensitivity','Blurred vision','Eye dryness'],nerves:['Numbness or tingling','Muscle weakness','Blurred vision','Dizziness or lightheadedness','Deep fatigue'],head:['Headache','Nausea or vomiting','Light sensitivity','Dizziness or lightheadedness'],breath:['Shortness of breath','Wheezing','Cough','Chest tightness'],pelvic:['Pelvic pain','Heavy bleeding','Bloating or gas','Back pain'],bladder:['Bladder pain','Bladder urgency','Pelvic pain'],mind:['Low mood','Anxiety','Feeling overwhelmed','Irritability','Poor sleep','Brain fog'],urges:['Urges & cravings'],energy:['Deep fatigue','Brain fog','Dizziness or lightheadedness','Muscle aches','Poor sleep'],general:['Deep fatigue','Joint pain','Abdominal pain','Rash or patches','Headache','Low mood']};
+const CKF_FLARE_BY_CONDITION={"Crohn's disease":'ibd','Ulcerative colitis':'ibd','IBD Unclassified (IBD-U)':'ibd','Microscopic colitis':'ibd','Irritable bowel syndrome (IBS)':'gut','SIBO':'gut','Gastroparesis':'gut','Celiac disease':['gut','skin'],'Mastocytosis / MCAS':['gut','skin'],'Rheumatoid arthritis':'joints','Psoriatic arthritis':['joints','skin'],'Juvenile idiopathic arthritis (JIA)':['joints','eyes'],'Chronic osteoarthritis':'joints','Ankylosing spondylitis':['back','eyes'],'Chronic lumbar / cervical pain':'back','Fibromyalgia':'widespread','Ehlers-Danlos syndrome':'eds','Lupus (SLE)':'lupus',"Sjögren's syndrome":'sjogren',"Graves' disease / hyperthyroidism":'eyes','Multiple sclerosis':'nerves','Chronic uveitis / episcleritis':'eyes','Psoriasis':'skin','Vasculitis':'skin','Severe / chronic atopic dermatitis':'skin','Discoid lupus':'skin','Endometriosis':'pelvic','Adenomyosis':'pelvic','Interstitial cystitis':'bladder','Chronic asthma':'breath','COPD':'breath','Chronic arterial hypertension':'general','Generalized anxiety disorder':'mind','Panic disorder':'mind','Phobias (specific & social)':'mind','Major depression':'mind','Persistent depression (dysthymia)':'mind','Bipolar disorder':'mind','ADHD':'mind','Alcohol use disorder':['urges','mind'],'Substance use disorder':['urges','mind'],'ME/CFS (chronic fatigue syndrome)':'energy','POTS':'energy',"Hashimoto's / hypothyroidism":'energy',"Addison's disease":'energy','Adrenal insufficiency':'energy','Chronic migraine':'head','Diabetes (Type 1 & Type 2)':'general','Other / not listed':'general'};
+/* the areas THIS person is offered. `conds` (optional) is for the harness;
+   the app passes nothing and the conditions are read at use time. No
+   CFModules layer at all → the five, the app as it was. */
+function ckfFlareTypes(conds){let list=conds;if(!Array.isArray(list)){if(!window.CFModules||typeof CFModules.get!=='function')return CKF_FLARE_TYPES.slice();try{list=CFModules.get().conditions;}catch(e){list=[];}}const out=[];(Array.isArray(list)?list:[]).filter(Boolean).forEach(n=>{const g=CKF_FLARE_BY_CONDITION[n]||'general';(Array.isArray(g)?g:[g]).forEach(id=>(CKF_FLARE_GROUPS[id]||[]).forEach(k=>{if(out.indexOf(k)<0)out.push(k);}));});return out.length?out:CKF_FLARE_GROUPS.general.slice();}
 /* ---------- the day, the record, the write ---------- */
 function ckfDay(){try{return window.cfDayKey?cfDayKey():new Date().toISOString().slice(0,10);}catch(e){return new Date().toISOString().slice(0,10);}}
 function ckfStore(){try{return(window.CF_loadStore&&CF_loadStore())||{};}catch(e){return{};}}
@@ -241,5 +271,5 @@ if(!open)return null;
 return React.createElement(CFCheckinFlow,{onClose:()=>setOpen(false)});}
 function cfOpenCheckinFlow(){try{if(typeof window.CFCheckinFlowOpen==='function'){window.CFCheckinFlowOpen();return true;}}catch(e){}
 try{window.dispatchEvent(new CustomEvent('cf-checkin-flow'));return true;}catch(e){}return false;}
-Object.assign(window,{CFCheckinFlow,CFCheckinFlowHost,cfOpenCheckinFlow,ckfScreens,ckfScreenAnswered,ckfScreenAuto,CKF_FLARE_TYPES});
+Object.assign(window,{CFCheckinFlow,CFCheckinFlowHost,cfOpenCheckinFlow,ckfScreens,ckfScreenAnswered,ckfScreenAuto,CKF_FLARE_TYPES,CKF_FLARE_GROUPS,CKF_FLARE_BY_CONDITION,ckfFlareTypes});
 })();

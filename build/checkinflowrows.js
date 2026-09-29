@@ -121,12 +121,17 @@ if(!ParamRow||!SegSelect)return null;const has=ckfHas(rec.sunProtect);
 return React.createElement(CkfSub,{color:col},
 React.createElement(ParamRow,{icon:Ic.shield({width:16,height:16}),iconColor:col[1],label:tr('Sun protection used?'),value:has?tx(rec.sunProtect):'—',valueColor:has?col[1]:'var(--muted-2)'},
 React.createElement(SegSelect,{options:['Yes','No'],value:rec.sunProtect,onChange:v=>update({sunProtect:v}),color:col})));}
-/* the five flare areas — the journal's own `flareTypes` values, asked with
-   the chip row and the label the flow already ships in 16 languages */
+/* the flare areas — the journal's own `flareTypes` values (English keys,
+   shown through tx()), asked with the chip row and the label the flow
+   already ships in 16 languages. CICLO 1.0.7f §2: the list follows the
+   person's conditions (ckfFlareTypes, checkinflow.jsx), and a value the day
+   already holds that this person is no longer offered stays in the row, lit,
+   so a saved day is never shown emptier than it is. */
 function CkfFlareTypes({rec,update}){const ParamRow=window.CF_ParamRow,Chips=window.CF_Chips,col=(window.PC||{}).flare||['#f6a96b','#e07d2c'];
 if(!ParamRow||!Chips)return null;
 const arr=Array.isArray(rec.flareTypes)?rec.flareTypes:(ckfHas(rec.flareTypes)?[rec.flareTypes]:[]);
-const opts=window.CKF_FLARE_TYPES||['Diarrhea','Uveitis','Arthritis','Dermatitis','Psoriasis'];
+const offer=window.ckfFlareTypes?ckfFlareTypes():(window.CKF_FLARE_TYPES||['Diarrhea','Uveitis','Arthritis','Dermatitis','Psoriasis']);
+const opts=offer.concat(arr.filter((v,i)=>typeof v==='string'&&v&&offer.indexOf(v)<0&&arr.indexOf(v)===i));
 return React.createElement(CkfSub,{color:col},
 React.createElement(ParamRow,{icon:Ic.spark({width:16,height:16}),iconColor:col[1],label:tr('Which areas are flaring?'),value:arr.length?String(arr.length):'—',valueColor:arr.length?col[1]:'var(--muted-2)'},
 React.createElement(Chips,{options:opts,value:arr,onToggle:o=>update({flareTypes:arr.indexOf(o)>=0?arr.filter(x=>x!==o):arr.concat([o])}),color:col})));}

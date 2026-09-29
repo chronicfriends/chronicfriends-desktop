@@ -16,6 +16,12 @@
    revision are translated in i18nmanual2026a/b.jsx.
    =================================================================== */
 function cfManualPatient() {
+  /* CICLO 1.0.7g §2 (29 Sep 2026) — «Read a post in your language» is only
+     shown where the phone CAN translate: the same test as postcard.jsx
+     (ptApi), asked at every paint (UserManualView calls this builder on each
+     render), never when this file loads — the layer arrives separately, from
+     webapp/vendor/. A phone without it would read about a button it cannot see. */
+  const canTranslate = !!(window.CFPostTr && typeof window.CFPostTr.get === 'function');
 
   return [
 
@@ -176,7 +182,12 @@ function cfManualPatient() {
       { title: tr('A flare you log yourself'),
         where: [tr('Journal')],
         body: tr('The first question of the evening asks whether you are having a flare-up, and a yes then asks which areas. That day turns <strong>cyan</strong> on your calendar, appears in the month legend, counts in your reports and comes out cyan in the PDF your doctor reads — exactly like a day spent in Flare Mode.'),
-        problem: tr('Until now a flare day was only recorded by turning Flare Mode on, so anybody who does not use the shelter never recorded a single flare — and those are the days a doctor most needs to see. A flare you answer by hand is now worth exactly as much as one spent in the shelter. It only ever adds: answering no can never take the cyan off a day you really did spend in Flare Mode.') },
+        problem: tr('Until now a flare day was only recorded by turning Flare Mode on, so anybody who does not use the shelter never recorded a single flare — and those are the days a doctor most needs to see. A flare you answer by hand is now worth exactly as much as one spent in the shelter. It only ever adds: answering no can never take the cyan off a day you really did spend in Flare Mode.'),
+        /* CICLO 1.0.7f §2 (28 Sep 2026): the areas follow the person's own
+           conditions (ckfFlareTypes, checkinflow.jsx) and a saved day keeps
+           what it holds (CkfFlareTypes adds it back, lit). The <strong> is
+           the manual's own «Settings › My Health» (i18nmanual2026o). */
+        tip: tr('The areas it offers follow the conditions you chose, which you can change in <strong>Settings \u203a My Health</strong>. A day you already saved keeps the areas you marked, even if your conditions change later.') },
 
       { title: tr('Rate pain, energy & more'),
         shot: 'IMG_6948.png',
@@ -590,6 +601,20 @@ function cfManualPatient() {
         body: tr('Open <strong>Community</strong> and you land on <strong>Posts</strong> — a feed where patients (and verified doctors) share experiences, questions and small wins. Tap <strong>\u2764</strong> to support a post, the bubble to comment, or the big <strong>New Post</strong> button to share your own. The tabs across the top switch between Posts, Chronic Friends, Best Chronic Friends and Doctors.'),
         problem: tr('Chronic illness can be isolating, and friends who haven\u2019t lived it often just don\u2019t understand. Here you\u2019re surrounded by people who instantly do — advice, reassurance and \u201cme too\u201d from people walking the same road.') },
 
+      /* CICLO 1.0.7f §3 (28 Sep 2026) — «Translate ▾» under every post
+         (CFPostCard, postcard.jsx: the feed AND the Tools room). CICLO 1.0.7g
+         (29 Sep 2026): the translations are made by the phone's OWN translator
+         (Apple's on iPhone, Google's on Android) through window.CFPostTr — the
+         text never leaves the phone — so the tip says so, and the topic is only
+         in the manual when that layer exists (canTranslate, above). Every
+         <strong> is the app's own word (i18nciclo107f). No figure: «the app's
+         languages». NO shot: — no capture of the control exists yet. */
+      ...(canTranslate ? [{ title: tr('Read a post in your language'),
+        where: [tr('Community'), tr('Posts')],
+        body: tr('Under each post, <strong>Translate</strong> lists the app\u2019s languages, each under its own name, with yours first. Pick one and the title and the text of that post change into it right there, with a small line that says which language it was written in; <strong>See original</strong> brings back the words exactly as they were written. It works the same way in the Tools room.'),
+        problem: tr('The people here write in many languages. A post you cannot read is a voice you cannot hear, so any post can be read in yours without leaving the feed.'),
+        tip: tr('Your phone translates the post itself, so the text never leaves your phone. The first time you choose a language, your phone may need to download it, so it can take a moment: <strong>Translating\u2026</strong> stays on the post until it is ready. Comments are not translated yet.') }] : []),
+
       /* BUILD 37 (1 Sep 2026) — the row of a person in the census lost its
          compact «Add as friend» button: it ate the width and cut the names
          («Carl…», «Euge…»). The ask lives on the card now, so the body and
@@ -614,6 +639,17 @@ function cfManualPatient() {
         body: tr('Open the <strong>Chronic Friends</strong> tab and, below your own friends, <strong>All people</strong> lists everyone who is on Chronic Friends. Keep scrolling and more names arrive, twenty at a time. Tap a name to read that person\u2019s profile and ask for their friendship from there, or use the search field above to narrow the list \u2014 it matches the <strong>start</strong> of a name, so \u201cmar\u201d finds \u201cMarta\u201d and not \u201cAna Mar\u00eda\u201d. Being in the list only means people can ask: nobody can write to you until you have accepted them.'),
         problem: tr('A new account used to open this tab, see an empty friends list and conclude there was nobody here. The people are the app \u2014 so they are visible from the first second, without typing a letter.'),
         tip: tr('If you would rather not appear there, turn off <strong>Let others find me</strong> in Settings \u2014 your current friends and chats stay exactly as they are.') },
+
+      /* CICLO 1.0.7f §4 (28 Sep 2026) — the invitation under Recent Chats
+         (CFInviteLink, invite.jsx). WhatsApp goes through https://wa.me/ —
+         inside the app only https links open. The message names nobody's
+         health. Every <strong> is the app's own word (Recent Chats → i18n4 /
+         i18n8-17 · the rest → i18nciclo107f); WhatsApp is a name.
+         NO shot: — no capture exists yet. */
+      { title: tr('Invite someone who is not here yet'),
+        where: [tr('Community'), tr('Chronic Friends')],
+        body: tr('In the <strong>Chronic Friends</strong> tab, right under <strong>Recent Chats</strong>, <strong>Invite someone to Chronic Friends</strong> shows a short message with the link to our website, in your language. Send it with <strong>WhatsApp</strong> \u2014 you pick the contact there \u2014 or tap <strong>Copy link</strong> and paste it wherever you like. Where your phone offers it, <strong>Share\u2026</strong> opens its own list of apps.'),
+        problem: tr('The people who would understand you best are often already in your phone. An invitation should be one tap away, and it should never say anything about you: it carries the invitation and the link, and not a word about anybody\u2019s health.') },
 
       /* ANNEX 1 (29 Aug 2026) — the switch takes you out of the LIST, not
          only out of search: the census publishes everybody without anyone
