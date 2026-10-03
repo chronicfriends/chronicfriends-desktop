@@ -183,6 +183,12 @@
   var cloudCount = {};
   var myCloudLikes = {};
   var myLikePending = {};
+  /* LIKE1 (29 sep 2026): foto de (contador, ¿era mío?) en el momento del toque.
+     El batch sube el contador del post ANTES de que mi doc de like llegue por el
+     grupo: en ese hueco «contador (ya con mi +1) − mi like (aún no confirmado)»
+     sumaba a los demás mi propio like y el corazón contaba DOBLE (Gerhard, 28
+     sep: 1 → 2 → 1 → 3…). Mientras haya un toque pendiente se cuenta desde la foto. */
+  var likeBase = {};
 
   function iLiked(id) { return (id in myLikePending) ? myLikePending[id] : !!myCloudLikes[id]; }
 
@@ -195,7 +201,9 @@
     Object.keys(myCloudLikes).forEach(function (k) { ids[k] = 1; });
     Object.keys(myLikePending).forEach(function (k) { ids[k] = 1; });
     Object.keys(ids).forEach(function (id) {
-      var others = (cloudCount[id] || 0) - (myCloudLikes[id] ? 1 : 0);   /* likes de los DEMÁS */
+      var others;                                                        /* likes de los DEMÁS */
+      if ((id in myLikePending) && likeBase[id]) others = likeBase[id].count - (likeBase[id].mine ? 1 : 0);
+      else others = (cloudCount[id] || 0) - (myCloudLikes[id] ? 1 : 0);
       if (others < 0) others = 0;
       var arr = [];
       for (var i = 0; i < others; i++) arr.push('⁣o' + i);   /* placeholder opaco: solo cuenta */
@@ -224,7 +232,7 @@
       /* fallo duro (no transitorio reintentable — increment no se reintenta): la
          escritura no persistió, así que se revierte la intención optimista para
          no quedar descuadrado respecto a la nube. */
-      try { delete myLikePending[localId]; recomputeLikes(); } catch (e) {}
+      try { delete myLikePending[localId]; delete likeBase[localId]; recomputeLikes(); } catch (e) {}
     });
   }
 
@@ -239,7 +247,7 @@
       /* la nube ya refleja mi estado → limpia los pendientes que coincidan (fin
          del optimismo, sin parpadeo: el pendiente aguanta hasta que la nube iguala). */
       Object.keys(myLikePending).forEach(function (id) {
-        if (!!myCloudLikes[id] === myLikePending[id]) delete myLikePending[id];
+        if (!!myCloudLikes[id] === myLikePending[id]) { delete myLikePending[id]; delete likeBase[id]; }
       });
       recomputeLikes();
     }, function (g) {
@@ -383,6 +391,7 @@
         try {
           if (cidById(id)) {                                   /* post existe en la nube */
             var nowLiked = ((P.likes || {})[id] || []).indexOf(localUid()) !== -1;
+            if (!likeBase[id]) likeBase[id] = { count: cloudCount[id] || 0, mine: !!myCloudLikes[id] };   /* LIKE1: foto de antes del toque */
             myLikePending[id] = nowLiked;                      /* override optimista */
             pushLike(id, nowLiked);                            /* batch a la nube */
             recomputeLikes();                                  /* pinta ya el estado coherente */
@@ -435,7 +444,7 @@
     if (CF() && CF().onState) {
       CF().onState(function (u) {
         if (u && u.emailVerified) { if (!poll && !hooked) poll = setInterval(ensure, 1200); ensure(); }
-        else { stopListen(); stopListenLikes(); stopListenComments(); cloudCount = {}; myCloudLikes = {}; myLikePending = {}; }
+        else { stopListen(); stopListenLikes(); stopListenComments(); cloudCount = {}; myCloudLikes = {}; myLikePending = {}; likeBase = {}; }
       });
     }
   } catch (e) {}

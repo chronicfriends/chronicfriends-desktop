@@ -218,7 +218,7 @@
     'You can turn it off whenever you like — in Settings, or at the top of your Journal.': {
       es: 'Puedes apagarlo cuando quieras: en Ajustes o arriba de tu Diario.',
       ca: 'El pots apagar quan vulguis: a Configuració o a dalt del teu Diari.',
-      fr: 'Vous pouvez le désactiver quand vous voulez — dans Réglages ou en haut de votre Journal.',
+      fr: 'Vous pouvez le désactiver quand vous voulez — dans Paramètres ou en haut de votre Journal.',
       de: 'Du kannst sie jederzeit ausschalten — in den Einstellungen oder oben im Tagebuch.',
       it: 'Puoi spegnerlo quando vuoi: nelle Impostazioni o in cima al Diario.',
       pt: 'Podes desligá-lo quando quiseres — nas Definições ou no topo do teu Diário.',

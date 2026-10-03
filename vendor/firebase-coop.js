@@ -173,11 +173,12 @@
         out.outgoing = {
           id: id, toolId: d.toolId, toolName: d.toolName, accent: d.accent || null,
           partner: persona(otro), at: d.createdAt || 0, expiresAt: d.expiresAt || 0,
-          status: d.status === 'declined' ? 'declined' : (caducada ? 'expired' : 'invited')
+          /* COOP2: 'busy' = la otra persona estaba en otra sesión y su app lo rechazó al momento */
+          status: d.status === 'declined' ? (d.reason === 'busy' ? 'busy' : 'declined') : (caducada ? 'expired' : 'invited')
         };
         return;
       }
-      if (soyGuest && d.status === 'invited' && invitacionViva(id, d)) {
+      if (soyGuest && d.status === 'invited' && !rechazando[id] && invitacionViva(id, d)) {
         out.incoming.push({
           id: id, toolId: d.toolId, toolName: d.toolName, accent: d.accent || null,
           from: persona(otro), at: d.createdAt || 0, expiresAt: d.expiresAt || 0
@@ -192,9 +193,16 @@
   /* lo que se sabe de UNA sesión concreta. El id (host__guest) se repite en
      cada invitación entre las mismas dos personas: al cambiar de sesión, fuera. */
   var altaDe = {};          /* id → createdAt de la sesión que conozco con ese id */
+  var rechazando = {};      /* COOP2: invitaciones que rechacé yo mismo por estar en otra sesión */
   function olvidar(id) {
     delete llegada[id]; delete pendiente[id]; delete vivaDesde[id]; delete recibida[id];
-    delete terminando[id];
+    delete terminando[id]; delete rechazando[id];
+  }
+  /* COOP2: ¿estoy ahora mismo en una sesión en marcha (con quien sea)? */
+  function enSesionViva(me) {
+    return Object.keys(docs).some(function (k) {
+      var x = docs[k]; return !!(x && x.status === 'live' && (x.host === me || x.guest === me));
+    });
   }
 
   function mezclar(rol, lista) {
@@ -225,6 +233,14 @@
       if (d.status === 'invited') {
         pendiente[id] = true;
         if (d.guest === me && enDirecto && !recibida[id]) recibida[id] = now();
+        /* COOP2 (29 sep 2026): si me invitan mientras YA estoy en una sesión, no
+           dejo caducar la invitación (quien invita leería «no ha contestado», como
+           si le hubiera ignorado): la rechazo al momento con motivo 'busy' y su app
+           pinta «está en otra sesión». Solo en directo y una vez por invitación. */
+        if (d.guest === me && enDirecto && !rechazando[id] && enSesionViva(me)) {
+          rechazando[id] = true;
+          try { actualizar(id, { status: 'declined', reason: 'busy' }).catch(function () {}); } catch (e) {}
+        }
       }
       if (d.status === 'live') {
         if (!vivaDesde[id]) {

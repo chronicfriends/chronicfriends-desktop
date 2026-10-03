@@ -196,7 +196,7 @@
   "I’d like to invite you to Chronic Friends, an app for people who live with a chronic illness: {link}": {
     es: "Te invito a Chronic Friends, una app para personas que viven con una enfermedad crónica: {link}",
     ca: "Et convido a Chronic Friends, una app per a persones que viuen amb una malaltia crònica: {link}",
-    fr: "Je t’invite sur Chronic Friends, une appli pour les personnes qui vivent avec une maladie chronique : {link}",
+    fr: "Je vous invite sur Chronic Friends, une appli pour les personnes qui vivent avec une maladie chronique : {link}",
     de: "Ich lade dich zu Chronic Friends ein, einer App für Menschen, die mit einer chronischen Krankheit leben: {link}",
     it: "Ti invito su Chronic Friends, un’app per chi vive con una malattia cronica: {link}",
     pt: "Convido-te para o Chronic Friends, uma app para pessoas que vivem com uma doença crónica: {link}",

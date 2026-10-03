@@ -37,7 +37,7 @@ const CKF_MOD_ROWS={
 /* musc — mjPain is asked once, as Pain Level */
 mjStiff:{mod:'musc',kind:'seg',icon:'unlockpad',label:'Morning stiffness lasted…',options:['None','<15 min','15–60 min','>1 h']},
 mjMobility:{mod:'musc',kind:'level',theme:'energy',icon:'run',label:'How does your body move today?',min:'Locked up',max:'Moving freely'},
-mjZones:{mod:'musc',kind:'chips',icon:'bodymap',label:'Where do you feel it?',options:['Hands','Knees','Back','Neck','Hips','Shoulders']},
+mjZones:{mod:'musc',kind:'chips',icon:'bodymap',label:'Where does it hurt or feel stiff?',options:['Hands','Knees','Upper back','Lower back','Neck','Hips','Shoulders']},
 eyeDry:{mod:'eyes',kind:'level',icon:'eye',label:'Eye dryness',min:'Comfortable',max:'Very dry'},
 eyeLight:{mod:'eyes',kind:'level',icon:'sun',label:'Light sensitivity',min:'None',max:'Very sensitive'},
 eyeChips:{mod:'eyes',kind:'chips',icon:'spark',label:'Anything else today?',options:['Blurry vision','Redness','Eye pain']},
@@ -72,6 +72,10 @@ digGas:{mod:'dig',kind:'seg',icon:'gut',label:'Gas or bloating today?',options:[
 function ckfHas(v){return v!=null&&v!==''&&!(Array.isArray(v)&&!v.length);}
 function ckfModColorOf(mod){const m=(window.SM_MOD_BY||{})[mod];return(m&&m.color)||(window.PC&&PC.nature)||['#9fe07a','#4e9c3f'];}
 function ckfDigCtx(){try{return(window.CFModules&&CFModules.digCtxOptions())||[];}catch(e){return[];}}
+/* CICLO 1.0.8b §7 — the joints question. The stored value 'Back' shared the translation key of the BACK BUTTON; the offer is now 'Upper back' · 'Lower back', an old 'Back' is SHOWN through the read-only key 'Back (body)' and appended, lit, to the row. 'Back' the button's key is never touched. */
+const CKF_MJ_LEGACY={'Back':'Back (body)'};
+function cfMjZoneLabel(v){return tx(CKF_MJ_LEGACY[v]||v);}
+function cfMjZoneOptions(base,held){const out=(base||[]).slice();(held||[]).forEach(v=>{if(v&&out.indexOf(v)<0)out.push(v);});return out;}
 function ckfRowLabel(d){try{return d.lbl&&window.smMindLbl?smMindLbl(d.lbl[0],d.lbl[1]):tr(d.label);}catch(e){return tr(d.label||'');}}
 /* ---------- a module row — modcheckin.jsx's own row components ---------- */
 function CkfModRow({field,rec,update}){const d=CKF_MOD_ROWS[field];
@@ -80,8 +84,8 @@ if(!d||!Level||!Seg||!ChipsR||!Note)return null;
 const color=ckfModColorOf(d.mod);const set=v=>update({[field]:v});
 if(d.kind==='note')return React.createElement(Note,{value:rec[field],onChange:set,ph:tr(d.ph)});
 if(d.kind==='level')return React.createElement(Level,{icon:Ic[d.icon],color:color,label:ckfRowLabel(d),value:rec[field],onChange:set,minLabel:tr(d.min),maxLabel:tr(d.max),theme:d.theme||'pain'});
-if(d.kind==='chips'){const arr=rec[field]||[];const opts=d.options||ckfDigCtx();
-return React.createElement(ChipsR,{icon:Ic[d.icon],color:color,label:ckfRowLabel(d),options:opts,value:arr,onToggle:o=>set(arr.indexOf(o)>=0?arr.filter(x=>x!==o):arr.concat([o]))});}
+if(d.kind==='chips'){const arr=rec[field]||[];const opts=field==='mjZones'?cfMjZoneOptions(d.options,arr):d.options||ckfDigCtx();
+return React.createElement(ChipsR,{icon:Ic[d.icon],color:color,label:ckfRowLabel(d),options:opts,value:arr,onToggle:o=>set(arr.indexOf(o)>=0?arr.filter(x=>x!==o):arr.concat([o])),labelOf:field==='mjZones'?cfMjZoneLabel:undefined});}
 return React.createElement(Seg,{icon:Ic[d.icon],color:color,label:ckfRowLabel(d),options:d.options,value:rec[field],onChange:set,minLabel:d.min?tr(d.min):undefined,maxLabel:d.max?tr(d.max):undefined,wrap:d.wrap});}
 /* ---------- a core row — checkin.jsx's own Seg() / pain / energy ----------
    The 0–10 pair keeps the form's exact icon and value colours; the only
@@ -201,5 +205,5 @@ ckfMapPending(kind).forEach(z=>{const es=all[z]||[],last=es[es.length-1];if(!las
 try{CFModLogs.addZone(kind,z,{d:d,ts:Date.now(),v:last.v,note:''});}catch(e){}});}
 function CkfMapCard({mapKind,mod}){if(!window.BodyMap)return null;
 return React.createElement("div",{className:"ckf-map"},React.createElement(BodyMap,{kind:mapKind,accent:ckfModColorOf(mod)}));}
-Object.assign(window,{CKF_MOD_ROWS,CkfRow,CkfModRow,CkfMapCard,ckfRowAnswered,ckfRowOptional,ckfRowMulti,ckfRowField,ckfPulseDefs,ckfHas,ckfModColorOf,ckfDigCtx,ckfMapPending,ckfMapCarry,ckfMapLoggedToday,ckfMapToday});
+Object.assign(window,{CKF_MOD_ROWS,CkfRow,CkfModRow,CkfMapCard,ckfRowAnswered,ckfRowOptional,ckfRowMulti,ckfRowField,ckfPulseDefs,ckfHas,ckfModColorOf,ckfDigCtx,cfMjZoneLabel,cfMjZoneOptions,CKF_MJ_LEGACY,ckfMapPending,ckfMapCarry,ckfMapLoggedToday,ckfMapToday});
 })();

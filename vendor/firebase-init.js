@@ -107,7 +107,9 @@
       return fetch(CF_MAIL_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok },
-        body: JSON.stringify({ lang: lang })
+        /* VER1 (2 oct 2026): desde la APP, el «Continuar» del correo vuelve a la app
+           (functions/index.js · enlaceVerificacion); desde la web, a la web. */
+        body: JSON.stringify({ lang: lang, origen: window.ReactNativeWebView ? 'app' : 'web' })
       });
     }).then(function (r) {
       if (!r.ok) throw new Error('http-' + r.status);
@@ -237,6 +239,45 @@
       try { window.dispatchEvent(new Event('cf-auth-changed')); } catch (e) {}
     });
   } catch (e) {}
+
+  /* 🌍 EML4 (2 oct 2026) — EL IDIOMA DE LA APP, A LA NUBE.
+     Gerhard: «si se puede descubrir qué idioma usa el usuario en la app, hay que enviarle los
+     emails en el idioma correspondiente». El motor de correos (functions/mail-seq.js) no podía
+     saberlo: el idioma vive en el teléfono (I18n.lang / localStorage cf_lang) y a todos les
+     llegaba en inglés. Se guarda en users/{uid}/private/lang = { lang, updatedAt }: privado (solo
+     su dueño lo lee; el motor, con el SDK admin) y con el esquema cerrado en firestore.rules.
+     Se escribe SOLO cuando cambia (marca local cf_lang_nube = '<uid>:<idioma>'), en tres momentos:
+     al tener sesión, al cambiar el idioma en Ajustes y al volver a la app (reintento si la vez
+     anterior no pudo: sin red, o el correo aún sin verificar — las reglas lo exigen). */
+  (function () {
+    var MARCA = 'cf_lang_nube';
+    var IDIOMAS = ['en', 'es', 'ca', 'fr', 'de', 'it', 'pt', 'zh', 'ja', 'ko', 'hi', 'id', 'tr', 'ru', 'vi', 'ar'];
+    var enCurso = false;
+    function idiomaApp() {
+      var l = '';
+      try { l = (window.I18n && window.I18n.lang) || ''; } catch (e) {}
+      if (!l) { try { l = localStorage.getItem('cf_lang') || ''; } catch (e) {} }
+      return IDIOMAS.indexOf(l) >= 0 ? l : '';
+    }
+    function sincronizar() {
+      var u = auth.currentUser;
+      var store = window.CFStore;
+      if (enCurso || !u || !u.emailVerified || !store || !store.available) return;
+      var l = idiomaApp();
+      if (!l) return;
+      var marca = u.uid + ':' + l;
+      try { if (localStorage.getItem(MARCA) === marca) return; } catch (e) {}
+      enCurso = true;
+      store.set('users/' + u.uid + '/private/lang', { lang: l, updatedAt: Date.now() }, { overwrite: true })
+        .then(function (r) { if (r && r.ok) { try { localStorage.setItem(MARCA, marca); } catch (e) {} } })
+        .catch(function () {})
+        .then(function () { enCurso = false; });
+    }
+    try { window.addEventListener('cf-auth-changed', function () { setTimeout(sincronizar, 1500); }); } catch (e) {}
+    try { document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') sincronizar(); }); } catch (e) {}
+    try { if (window.I18n && window.I18n.listeners) window.I18n.listeners.add(function () { setTimeout(sincronizar, 0); }); } catch (e) {}
+    window.CFLangNube = { sincronizar: sincronizar, idiomaApp: idiomaApp };
+  })();
 
   try { console.log('[CFFirebase] listo · proyecto', firebaseConfig.projectId, '· available=true'); } catch (e) {}
 })();

@@ -146,8 +146,16 @@
     c.querySelector('[data-cf="resend"]').textContent = T('fb_ov_resend', 'Resend email');
     c.querySelector('[data-cf="cancel"]').textContent = T('fb_ov_cancel', 'Use another email');
   }
-  function showOverlay(email) { buildOverlay(); _ovEmail = email; ovText(); _ov.style.display = 'flex'; }
+  function showOverlay(email) { buildOverlay(); _ovEmail = email; ovText(); _ov.style.display = 'flex'; _ovDesde = Date.now(); _vigilar(); }
   function hideOverlay() { if (_ov) _ov.style.display = 'none'; }
+  function _ovVisible() { return !!(_ov && _ov.style.display !== 'none'); }
+
+  function _entrar() {
+    var p = _pending || {};
+    hideOverlay();
+    if (p.mode === 'returning') enterReturning(p.role, p.email, p.credKey, p.pw);
+    else enterFresh(p.role, p.email, p.credKey, p.pw);
+  }
 
   function _onConfirm() {
     if (_ovBusy || !available()) { if (!available()) toast(errMsg('network'), 'error'); return; }
@@ -155,12 +163,35 @@
     FB().isVerified().then(function (yes) {
       _ovBusy = false;
       if (!yes) { toast(T('fb_not_verified_yet', "We can't see the verification yet. Open the email and tap the link."), 'error'); return; }
-      var p = _pending || {};
-      hideOverlay();
-      if (p.mode === 'returning') enterReturning(p.role, p.email, p.credKey, p.pw);
-      else enterFresh(p.role, p.email, p.credKey, p.pw);
+      _entrar();
     }).catch(function () { _ovBusy = false; toast(errMsg('network'), 'error'); });
   }
+
+  /* VER1 (2 oct 2026) — LA APP SE ENTERA SOLA de que ya verificaste.
+     Hasta hoy, tras pulsar el enlace del correo había que volver y tocar «He verificado mi
+     correo». Ahora el «Continuar» del correo abre la app (www.chronicfriends.org/open/verificado,
+     functions/index.js) y, con esta ventana abierta, se comprueba sola: al volver a la app y,
+     por si el móvil no avisa de la vuelta, cada 5 s durante 10 minutos. En silencio — si aún no
+     está verificado no sale ningún aviso; el botón sigue ahí para quien lo prefiera. */
+  var _ovDesde = 0, _vigia = null;
+  var VIGIA_MS = 5000, VIGIA_MAX_MS = 10 * 60 * 1000;
+  function _autoCheck() {
+    if (!_ovVisible() || _ovBusy || !available()) return;
+    _ovBusy = true;
+    FB().isVerified().then(function (yes) {
+      _ovBusy = false;
+      if (yes && _ovVisible()) _entrar();
+    }).catch(function () { _ovBusy = false; });
+  }
+  function _vigilar() {
+    if (_vigia) return;
+    _vigia = setInterval(function () {
+      if (!_ovVisible() || Date.now() - _ovDesde > VIGIA_MAX_MS) { clearInterval(_vigia); _vigia = null; return; }
+      if (document.visibilityState === 'visible') _autoCheck();
+    }, VIGIA_MS);
+  }
+  try { document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') _autoCheck(); }); } catch (e) {}
+  try { window.addEventListener('focus', _autoCheck); } catch (e) {}
   function _onResend() {
     if (!available()) { toast(errMsg('network'), 'error'); return; }
     FB().sendVerification().then(function (r) { toast(r.ok ? T('fb_resent', 'Verification email re-sent.') : errMsg(r.code), r.ok ? 'ok' : 'error'); });

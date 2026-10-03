@@ -86,7 +86,7 @@
       fr: 'Journal, suivis, médicaments et communauté', de: 'Tagebuch, Tracker, Medikamente & Community',
       it: 'Diario, tracker, farmaci e comunità', pt: 'Diário, registos, medicação e comunidade',
       zh: '日记、追踪、用药与社区', ja: '日記・トラッカー・薬・コミュニティ',
-      ko: '일지, 트래커, 약, 커뮤니티', hi: 'डायरी, ट्रैकर, दवाइयाँ और समुदाय',
+      ko: '일지, 트래커, 약, 커뮤니티', hi: 'डायरी, ट्रैकर, दवा और समुदाय',
       id: 'Jurnal, pelacak, obat & komunitas', tr: 'Günlük, takipler, ilaçlar ve topluluk',
       ru: 'Дневник, трекеры, лекарства и сообщество', vi: 'Nhật ký, theo dõi, thuốc và cộng đồng',
       ar: 'اليوميات والمتابعات والأدوية والمجتمع',

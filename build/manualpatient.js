@@ -22,6 +22,9 @@ function cfManualPatient() {
      render), never when this file loads — the layer arrives separately, from
      webapp/vendor/. A phone without it would read about a button it cannot see. */
   const canTranslate = !!(window.CFPostTr && typeof window.CFPostTr.get === 'function');
+  /* CICLO 1.0.8b §17 — the same rule for the educational e-mails: the switch is drawn
+     only where window.CFMailPrefs exists (the mail engine), so its topic is too. */
+  const hasMailPrefs = !!(window.cfMailPrefsApi ? cfMailPrefsApi() : (window.CFMailPrefs && typeof window.CFMailPrefs.get === 'function' && typeof window.CFMailPrefs.set === 'function'));
 
   return [
 
@@ -209,7 +212,7 @@ function cfManualPatient() {
 
       { title: tr('Every chip you tap is counted'),
         where: [tr('Journal'), tr('Analytics')],
-        body: tr('The questions where you can tap several answers at once — <strong>Anything else today?</strong> in Eyes, <strong>Where do you feel it?</strong> in Joints, and the ones for skin, bathroom, breathing and mind — now come back to you as plain counts. In <strong>Analytics</strong>, and in the <strong>PDF</strong> your doctor reads, each tracker’s own section lists what you tapped and on how many days: <strong>Eye pain · 12</strong>, <strong>Redness · 9</strong>, <strong>Blurry vision · 4</strong> — with the most recent days that carry a note written underneath.'),
+        body: tr('The questions where you can tap several answers at once — <strong>Anything else today?</strong> in Eyes, <strong>Where does it hurt or feel stiff?</strong> in Joints, and the ones for skin, bathroom, breathing and mind — now come back to you as plain counts. In <strong>Analytics</strong>, and in the <strong>PDF</strong> your doctor reads, each tracker’s own section lists what you tapped and on how many days: <strong>Eye pain · 12</strong>, <strong>Redness · 9</strong>, <strong>Blurry vision · 4</strong> — with the most recent days that carry a note written underneath.'),
         problem: tr('Until now those answers were saved and then shown nowhere: you were recording eye pain for your ophthalmologist and it reached no chart, no report and no PDF. Counting is the honest way to show them — a chip has no 0–10 order, so it is counted, never scored.'),
         steps: [
           tr('Tap the chips as you always do in your daily check-in.'),
@@ -274,6 +277,28 @@ function cfManualPatient() {
           tr('Change the hour, or switch it off, on the first line at the top of your journal — or in the app settings, under <strong>Journal reminder</strong>. Both are the same switch.'),
           tr('Switching the journal reminder off never silences your medication alarms: those are a different switch.')],
         tip: tr('Off is off: switch it off and it stays off, updates included. And if your phone has notifications blocked, the app says so out loud instead of showing you a switch that cannot reach you.') },
+
+      /* CICLO 1.0.8a (29 Sep 2026) — the one-tap fix (notiffix.jsx). Every
+         claim verified against the code: CkNoPermNote paints CFNotifFix in
+         the Journal line, the reminder sheet and the Settings row; the
+         medication card shows it inside the app when the phone refused;
+         'default' → cfEnableNotifications (the system dialog), 'denied' →
+         CFMeds.openSettings; on 'granted' the fix says «Notifications are
+         allowed.» (i18ngap9) and CFCkRem.enable(time). The onboarding sheet
+         is CFNotifSkipSheet, once (ckSkipAsked). Every <strong> is the word
+         the live dictionary resolves. No shot. */
+      { title: tr('If the reminders never arrive'),
+        where: [tr('Journal'), tr('Settings'), tr('Medication')],
+        body: tr('The journal reminder and the medication alerts are shown by your phone, and your phone only shows them once it has been allowed to for Chronic Friends. Wherever the app cannot reach you it says so — and right under that line there is a button: <strong>Turn on notifications</strong> if your phone has never been asked, or <strong>Open notification settings</strong> if it was refused once. The second one takes you straight to the Chronic Friends page of your phone’s own settings: turn notifications on there and come back — the app notices by itself.'),
+        problem: tr('A reminder that is switched on inside the app but blocked by the phone looks as if it works and never rings. Until now the app only said it was blocked; the way to fix it is now one tap away, without hunting through the phone’s menus.'),
+        steps: [
+          tr('Look at the top of your journal, in the reminder sheet, or in the app settings under <strong>Journal reminder</strong>. The medication tab has its own button on its <strong>Alarms &amp; notifications</strong> card.'),
+          tr('Tap the button. Either your phone asks you on the spot, or it opens its own settings page for Chronic Friends: turn notifications on there and come back to the app.'),
+          tr('Back in the app, the line says <strong>Notifications are allowed.</strong> and, if your daily reminder was waiting for this, it is switched on at its usual hour.')],
+        /* CICLO 1.0.8b §8 — the tip gained its second sentence (rewritten in its own slot of
+           i18nmanual2026an): inside the app the tap waits for the phone's REAL answer
+           (ckEnableWithPermission), and a granted dialog continues the setup alone. */
+        tip: tr('During setup, the same button appears if the permission is not granted after <strong>Yes, remind me</strong>. Leaving that screen without notifications shows one gentle sheet, once — it never blocks the setup. Nothing is ever shown as allowed unless your phone really allows it. If you allow them in the dialog your phone shows, the app goes on by itself — there is nothing else to tap.') },
     ] },
 
   /* ---------- 5. FLARE RADAR ---------- */
@@ -800,9 +825,29 @@ function cfManualPatient() {
         body: tr('Chronic Friends speaks <strong>16 languages</strong> — pick yours in Settings \u203a Language and the whole app switches instantly, including right-to-left layouts. The <strong>Help center</strong> answers common questions and reaches our care team, and <strong>Emergency info</strong> lists urgent-care numbers: <strong>112</strong> (EU) \u00b7 <strong>911</strong> (US) \u00b7 <strong>999</strong> (UK).'),
         problem: tr('A health companion is useless in a language you don\u2019t think in — and dangerous if it pretends to handle emergencies. Chronic Friends meets you in your own language and is always clear about when to seek urgent care instead.'),
         tip: tr('Chronic Friends can never contact emergency services for you. Severe pain, persistent vomiting, high fever or heavy bleeding \u2192 seek urgent care immediately.') },
+
+      /* CICLO 1.0.8b §10 (30 Sep 2026) — Settings › Help & feedback (feedback.jsx). Every
+         <strong> is the live word of i18nciclo108b (the row, the three chips, the two
+         buttons). The body of the e-mail is verified against cfFeedbackMailto: the
+         person's words + version · platform · language, never a name, an account or
+         health data. No shot: — no capture of the sheet exists yet. */
+      { title: tr('How to contact us'),
+        where: [tr('Settings')],
+        body: tr('In <strong>Settings</strong>, next to the user manual, <strong>Help &amp; feedback</strong> opens a small sheet: choose <strong>Question</strong>, <strong>Suggestion</strong> or <strong>Problem</strong>, write what you want to tell us and tap <strong>Send by email</strong> — your phone’s mail app opens with the message ready for info@chronicfriends.org. If your phone has no mail app, <strong>Copy our email address</strong> copies it so you can write to us from wherever you like.'),
+        problem: tr('A doubt, an idea or something broken should not need a form or an account on another site: one message, from your own mail, that a person reads.'),
+        tip: tr('The email carries only your words and, at the end, the app version, the kind of phone and your language — never your name, your account or anything about your health. We usually answer within a few days.') },
+
+      /* CICLO 1.0.8b §17 — only where the mail engine exists (hasMailPrefs, above): a
+         phone without the row must not read about a switch it cannot see. The
+         <strong> is the row's own word (i18nciclo108b). */
+      ...(hasMailPrefs ? [{ title: tr('How to stop the emails'),
+        where: [tr('Settings')],
+        body: tr('Apart from the messages about your account, we send a few short emails on how to use the app: a welcome, gentle reminders and one email per feature. The switch <strong>Emails about the app</strong> in <strong>Settings</strong> stops them whenever you like, and so does the link at the bottom of every email; the verification and account messages still arrive. Nothing about your health is ever in them.'),
+        problem: tr('Emails you did not ask for are noise, and a way out that is hard to find is worse. The switch sits with the other preferences and takes one tap.') }] : []),
     ] },
   ];
 }
 
 window.cfManualPatient = cfManualPatient;
+
 })();

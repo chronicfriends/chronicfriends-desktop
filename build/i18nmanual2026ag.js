@@ -21,7 +21,7 @@
     fr: "Le tableau des forfaits commence par l’<strong>Offre gratuite</strong> : <strong>Pour toujours</strong>, <strong>Gratuit</strong>, et rien à toucher puisqu’il n’y a rien à acheter. Une marque discrète, <strong>Votre forfait</strong>, indique celui que vous avez.",
     de: "Die Plan-Tabelle beginnt mit dem <strong>Gratis-Plan</strong>: <strong>Für immer</strong>, <strong>Gratis</strong>, und nichts zum Antippen, weil es nichts zu kaufen gibt. Eine leise Markierung, <strong>Dein Plan</strong>, zeigt den, den du hast.",
     it: "La tabella dei piani inizia dal <strong>Piano gratuito</strong>: <strong>Per sempre</strong>, <strong>Gratis</strong>, e niente da toccare perché non c’è nulla da comprare. Una marca discreta, <strong>Il tuo piano</strong>, indica quello che hai.",
-    pt: "A tabela de planos começa pelo <strong>Plano gratuito</strong>: <strong>Para sempre</strong>, <strong>Grátis</strong>, e nada para tocar porque não há nada para comprar. Uma marca discreta, <strong>Seu plano</strong>, assinala o que tens.",
+    pt: "A tabela de planos começa pelo <strong>Plano gratuito</strong>: <strong>Para sempre</strong>, <strong>Grátis</strong>, e nada para tocar porque não há nada para comprar. Uma marca discreta, <strong>O teu plano</strong>, assinala o que tens.",
     zh: "方案表格的第一行是<strong>免费方案</strong>：<strong>永久</strong>、<strong>免费</strong>，也没有可点的地方，因为没有什么要买。一个不打扰的<strong>你的方案</strong>标出你现在用的那个。",
     ja: "プランの表は<strong>無料プラン</strong>から始まります。<strong>ずっと</strong>、<strong>無料</strong>、そして買うものがないのでタップするところもありません。いま使っているプランには<strong>あなたのプラン</strong>という控えめな印がつきます。",
     ko: "요금제 표는 <strong>무료 플랜</strong>으로 시작해요. <strong>언제까지나</strong>, <strong>무료</strong>, 그리고 살 것이 없으니 누를 것도 없습니다. 지금 쓰는 요금제에는 <strong>내 요금제</strong>라는 조용한 표시가 붙어요.",
