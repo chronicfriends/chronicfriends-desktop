@@ -1,18 +1,18 @@
 {
   "web": {
-    "version": "2026-09-29-0642",
-    "file": "webapp-2026-09-29-0642.zip",
-    "size": 12232542,
-    "md5": "4b076f254d6a23807b24db975d753af7",
-    "minNative": "1.0.7"
+    "version": "2026-10-02-2108",
+    "file": "webapp-2026-10-02-2108.zip",
+    "size": 12207642,
+    "md5": "1af90d2ffd227c1146015ce9f2183bbb",
+    "minNative": "1.0.8"
   },
   "native": {
     "ios": {
-      "latest": "1.0.7"
+      "latest": "1.0.8"
     },
     "android": {
       "latest": "1.0.7"
     }
   },
-  "published": "2026-09-29 06:53"
+  "published": "2026-10-03 19:39"
 }
