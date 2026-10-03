@@ -131,6 +131,14 @@
     var c = leerCache();
     if (c && c.uid === id) veredicto = { uid: id, founder: !!c.founder, seq: c.seq == null ? null : c.seq };
     else veredicto = null;
+    /* PION1 (3 oct 2026): se AVISA aquí aunque el veredicto salga de la caché. La
+       portada se pinta ANTES de que haya sesión (~2-3 s) y en ese momento la app solo
+       tiene el id local 'pat:<correo>', que no casa con el uid de la caché: para ella
+       NO es pionero y pinta las etiquetas del plan gratuito. Sin este aviso nadie la
+       repintaba — la nube llega después diciendo lo mismo y publicar() calla. Lo vio
+       Gerhard (pionero nº 3): las etiquetas solo se iban pasando por Ajustes.
+       Prueba: tools/tests/pion1-portada-harness.mjs (control con la capa de antes). */
+    avisar();
 
     unsub = ST().onDoc('users/' + id + '/' + SUB, function (d) {
       if (uid() !== id) return;             /* llegó tarde: ya hay otra sesión */
