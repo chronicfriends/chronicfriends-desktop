@@ -1,0 +1,3 @@
+# Worklog: _deploy_chronic_desktop
+
+## 2026-10-03 21:02:15 — cierre 2026-10-03 21:02
