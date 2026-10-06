@@ -478,13 +478,16 @@ function cfManualPatient() {
          which is why the music survives leaving the room. Every <strong>
          label is the live dictionary's own word (Zen Music · Stop after
          {n} min · Playing · Credits → i18nzenmusic; Meditation →
-         i18n-flare3). NO shot: — no capture of the screen exists yet. */
+         i18n-flare3). NO shot: — no capture of the screen exists yet.
+         6 Oct 2026 — Zen Music is now the FIRST door of the room
+         (normalcomfort.jsx), so the first step no longer says «the first
+         of the kits»: it just says to tap it. */
       { title: tr('Zen Music'),
         where: [tr('Home'), tr('Meditation')],
         body: tr('Inside Meditation, <strong>Zen Music</strong> holds four long pieces — from 20 to 37 minutes — to rest, meditate or fall asleep to. Press play on one and a player appears at the foot of the screen: pause it, drag the line to move through the piece, or stop it. Only one piece ever sounds at a time.'),
         problem: tr('Long music for sleeping or meditating usually means leaving the app for another one, full of ads and of whatever plays next. Here there are four quiet pieces, chosen and credited, with a timer that takes them away once you are asleep.'),
         steps: [
-          tr('Open <strong>Meditation</strong> on Home and tap <strong>Zen Music</strong>, the first of the kits.'),
+          tr('Open <strong>Meditation</strong> on Home and tap <strong>Zen Music</strong>.'),
           tr('Press play on the piece you fancy — it streams from the internet, so it needs a connection.'),
           tr('To fall asleep with it, choose <strong>Stop after 15 min</strong>, 30 or 60: the music fades away on its own. Tap the same button again to cancel it.'),
           tr('Leave the room or lock the phone and the music keeps playing; the <strong>Meditation</strong> card on Home then says <strong>Playing</strong> to take you back to it.')],
