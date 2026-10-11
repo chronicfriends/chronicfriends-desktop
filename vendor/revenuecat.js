@@ -114,11 +114,21 @@
     if (ok) p.resolve(val); else p.reject(val);
   }
 
-  /* ---- login/logout siguiendo la sesión de Firebase ---- */
+  /* ---- login/logout siguiendo la sesión de Firebase ----
+     PRIV (11 oct 2026): a RevenueCat va SOLO el uid de Firebase (CFIdentity.uid()),
+     nunca el id local 'pat:<correo>' / 'doc:<correo>' de CFNS.uid(): ese lleva el
+     correo dentro y no sale del móvil (CLAUDE.md). Hasta hoy se mandaba el local y
+     RevenueCat acabó con 30 correos como identificador (Historial CF [3173]).
+     Sin sesión de Firebase todavía → null: el SDK sigue anónimo y el login llega
+     con 'cf-auth-changed'. Prueba: tools/tests/rc-login-harness.mjs */
   function currentUid() {
-    try { if (window.CFNS && typeof CFNS.uid === 'function') { var u = CFNS.uid(); if (u && u !== 'anon') return u; } } catch (e) {}
-    try { var a = JSON.parse(localStorage.getItem('cf_auth_v1') || 'null'); if (a && a.email) return a.uid || ('pat:' + a.email); } catch (e) {}
-    return null;
+    var u = null;
+    try { if (window.CFIdentity && typeof CFIdentity.uid === 'function') u = CFIdentity.uid(); } catch (e) {}
+    if (!u) { try { var f = window.CFFirebase && CFFirebase.currentUser && CFFirebase.currentUser(); if (f && f.uid) u = f.uid; } catch (e) {} }
+    u = u ? String(u) : null;
+    /* red de seguridad: nada con un correo o con prefijo local sale hacia RevenueCat */
+    if (u && (u.indexOf('@') >= 0 || /^(pat|doc):/.test(u))) return null;
+    return u;
   }
   function syncAuth() {
     var uid = currentUid();
