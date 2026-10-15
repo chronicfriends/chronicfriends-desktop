@@ -105,7 +105,7 @@ function cfManualPatient() {
       { title: tr('The Flare Mode switch'),
         shot: 'IMG_6944.png',
         where: [tr('Home')],
-        body: tr('Right on the forest sits the <strong>Flare Mode</strong> switch. Having a flare-up? Turn it on and the app becomes a calmer, quieter shelter focused on rest, hydration and gentle tracking. Turn it off whenever you feel the flare is over — those days stay marked in <strong>cyan</strong> on your calendar and charts.'),
+        body: tr('Right on the forest sits the <strong>Flare Mode</strong> switch. Having a flare-up? Turn it on and the app becomes a calmer, quieter shelter focused on rest, hydration and gentle tracking. The first time, a short explanation shows how it works. Turn it off whenever you feel the flare is over — those days stay marked in <strong>cyan</strong> on your calendar and charts.'),
         problem: tr('On the hardest days a busy app is the last thing you need. One switch strips everything back to what helps — and because it\u2019s a switch, ending the flare is as deliberate as starting it.'),
         tip: tr('Only you can turn Flare mode on or off — the app never decides for you.') },
 
