@@ -2,7 +2,7 @@
    Estrategia: red primero, caché como respaldo (la app siempre fresca;
    sin red, sirve la última copia). La versión la sella deploy-desktop.sh
    con el WEBAPP_VERSION del paquete → cada deploy invalida la caché vieja. */
-var CACHE = 'cf-web-2026-10-15-0626';
+var CACHE = 'cf-web-2026-10-16-1049';
 
 self.addEventListener('install', function () { self.skipWaiting(); });
 

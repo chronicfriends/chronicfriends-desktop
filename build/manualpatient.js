@@ -800,7 +800,7 @@ function cfManualPatient() {
 
       { title: tr('Your data is yours'),
         where: [tr('Settings'), tr('Privacy & Data')],
-        body: tr('Under <strong>Privacy & Data</strong> you decide what your data may be used for, <strong>export</strong> everything as one file, <strong>change your password</strong>, or <strong>delete your account</strong> — permanently, with everything erased within 30 days. Tap <strong>Export my data</strong> and your phone opens its own share sheet, so you choose where the file goes: Files, e-mail, or any app you trust.'),
+        body: tr('Under <strong>Privacy & Data</strong> you decide what your data may be used for, <strong>export</strong> everything as one file, <strong>change your password</strong>, or <strong>delete your account</strong> — everything is erased, right away and for good. Tap <strong>Export my data</strong> and your phone opens its own share sheet, so you choose where the file goes: Files, e-mail, or any app you trust.'),
         problem: tr('Health data is deeply personal, and most apps make it a one-way street. Here it stays yours: you can see it, take it with you, or remove it entirely, at any time.'),
         tip: tr('Other members only ever see your name and your photo — plus anything you switch on yourself. Your journal is never one of those things.') },
 
