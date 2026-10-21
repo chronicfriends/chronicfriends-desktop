@@ -24,7 +24,21 @@ function cfManualPatient() {
   const canTranslate = !!(window.CFPostTr && typeof window.CFPostTr.get === 'function');
   /* CICLO 1.0.8b §17 — the same rule for the educational e-mails: the switch is drawn
      only where window.CFMailPrefs exists (the mail engine), so its topic is too. */
+  /* CICLO 1.0.8h — the same rule for the photos of a post (window.CFPostPhotos,
+     available === true) and for the official account's posts (window.CFOfficial):
+     a phone without the engine never reads about something it cannot show. */
+  const hasPhotos = !!(window.cfPostPhotosApi ? cfPostPhotosApi() : (window.CFPostPhotos && window.CFPostPhotos.available === true));
+  const hasOfficial = !!(window.CFOfficial && typeof window.CFOfficial.isOfficial === 'function');
+  /* CICLO 1.0.8i §7/§9 — «Sign in with Apple or Google» only where the engine
+     (window.CFSocialAuth) reports at least one provider, asked at every paint. */
+  const hasSocial = !!(window.cfSocialProviders ? cfSocialProviders().length : (window.CFSocialAuth && window.CFSocialAuth.available && (window.CFSocialAuth.available.apple === true || window.CFSocialAuth.available.google === true)));
   const hasMailPrefs = !!(window.cfMailPrefsApi ? cfMailPrefsApi() : (window.CFMailPrefs && typeof window.CFMailPrefs.get === 'function' && typeof window.CFMailPrefs.set === 'function'));
+  /* CICLO 1.0.8l §2 — the real sign-up engine (window.CFAuthFB.signUp — the very test
+     auth.jsx › startSignup makes) confirms a new e-mail account with a LINK: the notice says
+     «Check your inbox», and back in the app it notices by itself and lets the person in.
+     The 6-digit code exists only without it (this preview). Asked at every paint, like
+     hasSocial; the app always has the engine. */
+  const hasAuthEngine = !!(window.CFAuthFB && window.CFAuthFB.signUp);
 
   return [
 
@@ -34,16 +48,68 @@ function cfManualPatient() {
     intro: tr('Creating your account takes about a minute. Here is exactly what happens the first time you open Chronic Friends — and how to make it yours.'),
     topics: [
       { title: tr('Create your account'),
-        shot: 'img-consent.png',
+        /* CICLO 1.0.8k §3c — the shot came OFF: img-consent.png is the health-data screen of
+           step 0.5, which no longer exists (the file stays in assets/manual/). It waits for a
+           fresh capture of «Your details» with its consent box. */
         body: tr('Your account is your own private space. It safely keeps your journal, medications, Flare Radar and friends, and lets you sign in from any device without losing anything.'),
         problem: tr('Life with a chronic illness scatters your health story across memory, sticky notes and half-remembered appointments. One secure account gathers it in a single place that is always with you.'),
+        /* CICLO 1.0.8j §2 — the role picker left the sign-in screen on 15 Aug
+           (auth.jsx): step 1 says what opening the app shows (LoginLangPicker ·
+           the mark on green · the white panel); step 5 no longer promises «a
+           quick tour» — onboarding step 3 points at this manual. Both rewritten
+           in their slots (CF_MANUAL_KEYS_P[5] · [8] + the 15 tables).
+           CICLO 1.0.8k — step 2 says the age question (§1: e-mail accounts are asked
+           too, before the account exists; §3e: two choices, no date) and, ONLY with
+           the engine (hasSocial), where the Apple / Google buttons sit now (§3b: at
+           the top of «Create your account», above the e-mail form) — the no-engine
+           sentence rewritten in its slot (i18nmanual2026d), the engine one new
+           (i18nmanual2026ar). The consent is no longer a screen of its own (§3c): it
+           is the box on «Your details», so its step comes AFTER the one that starts
+           the setup assistant — rewritten in its slot (CF_MANUAL_KEYS_P[160] +
+           i18nmanual2026p). Every <strong> the live word of its language.
+           CICLO 1.0.8l §2 — step 3, ONLY with the engine (hasAuthEngine): open the e-mail, tap
+           its button, back in the app you go straight in (CFAuthFB.signUp sends a link, never a
+           code). Without the engine the old sentence stays in its slot (CF_MANUAL_KEYS_P[7] and
+           the eight tables, untouched); the new one lives in i18nmanual2026ar. No <strong>: the
+           notice's buttons are the engine's own words, not this project's. */
         steps: [
-          tr('Open the app and choose <strong>I\u2019m a patient</strong>.'),
-          tr('At the top of the white panel — just above <strong>Welcome back</strong> — tap <strong>Create your account</strong>, then enter your email and a password of at least <strong>6 characters</strong>.'),
-          tr('Type the <strong>6-digit code</strong> we email you to confirm it\u2019s really you.'),
-          tr('Right after the welcome, one screen explains in plain words what is stored (only what you write down), who can see it (only you) and that you can delete all of it from Settings whenever you want. Tick <strong>Yes, store my health data so the app can work</strong> and tap <strong>Accept and continue</strong>.'),
-          tr('The setup assistant (onboarding) starts automatically — name, health details, a quick tour, and your first check-in.')],
+          tr('Open the app: you arrive at the sign-in screen, with the Chronic Friends logo on green and a white panel below it. The button with the globe, at the top, changes the language.'),
+          hasSocial
+            ? tr('At the top of the white panel, tap <strong>Create your account</strong>. Its page starts with <strong>Continue with Apple</strong> and <strong>Continue with Google</strong> — only the ones your phone offers; under them, enter your email and a password of at least <strong>6 characters</strong>. The first time on this phone, the app asks whether you are an adult: tap <strong>Yes, I’m 18 or older</strong>.')
+            : tr('At the top of the white panel — just above <strong>Welcome back</strong> — tap <strong>Create your account</strong>, then enter your email and a password of at least <strong>6 characters</strong>. The first time on this phone, the app asks whether you are an adult: tap <strong>Yes, I’m 18 or older</strong>.'),
+          hasAuthEngine
+            ? tr('Open the email we send you and tap its button to confirm your address. Back in the app, you go straight in.')
+            : tr('Type the <strong>6-digit code</strong> we email you to confirm it\u2019s really you.'),
+          tr('The setup assistant (onboarding) starts automatically — name, health details, where to find this user manual, and your first check-in.'),
+          tr('On <strong>Your details</strong>, right above <strong>Continue</strong>, one line says what is stored (only what you write down), who can see it (only you) and that you can delete it from Settings whenever you want. Tick <strong>Yes, store my health data so the app can work</strong> and tap <strong>Continue</strong>: your details are saved only after that.')],
         tip: tr('Signing in never creates an account by itself. If we don\u2019t recognise your email, we ask you to create an account first — so you never end up in an empty duplicate.') },
+
+      /* CICLO 1.0.8i — LOGIN1: Apple / Google for real, through window.CFSocialAuth
+         (auth.jsx › SocialBlock). Every claim checked against the code: only the
+         providers the engine reports; the age gate first when this phone has not
+         confirmed it; no e-mail code; a new account → onboarding, an existing one
+         → the app; `account-exists` says so. Strings in i18nmanual2026aq, every
+         <strong> the live word (the providers' own titles). NO shot: no capture.
+         CICLO 1.0.8k, rewritten IN THEIR SLOTS of i18nmanual2026aq: the buttons right
+         under «Create your account» and at the top of its page (§3b) · the e-mail
+         comes from Apple or Google, the first name only as the starting value of
+         «What should we call you?» (§2, §3) · Apple's hidden e-mail is the address
+         Settings shows (§3f) · the age question names its answer (§3e).
+         CICLO 1.0.8l §2 — with the engine (hasAuthEngine) the body no longer contrasts Apple /
+         Google with «an e-mail code to type» (an e-mail account gets a link, not a code): «no
+         confirmation e-mail to open». Without it the 1.0.8k body stays. Both in i18nmanual2026ar /
+         i18nmanual2026aq, every <strong> unchanged. */
+      ...(hasSocial ? [{ title: tr('Sign in with Apple or Google'),
+        where: [tr('Sign in'), tr('Create your account')],
+        body: hasAuthEngine
+          ? tr('On the sign-in screen, right under <strong>Create your account</strong>, and at the top of its page, above the e-mail form, you can also tap <strong>Continue with Apple</strong> or <strong>Continue with Google</strong> — only the ones your phone offers. Your e-mail comes from Apple or Google, so there is no confirmation e-mail to open: they have already confirmed your address. If you choose to hide your e-mail, Apple gives you an address that forwards our e-mails to you — that is the one you will see in Settings. A new account then goes through the same first steps as one made with an e-mail, and <strong>What should we call you?</strong> already carries your first name if Apple or Google shared it: keep it or change it. An account you already have goes straight into the app.')
+          : tr('On the sign-in screen, right under <strong>Create your account</strong>, and at the top of its page, above the e-mail form, you can also tap <strong>Continue with Apple</strong> or <strong>Continue with Google</strong> — only the ones your phone offers. Your e-mail comes from Apple or Google, so there is no e-mail code to type: they have already confirmed your address. If you choose to hide your e-mail, Apple gives you an address that forwards our e-mails to you — that is the one you will see in Settings. A new account then goes through the same first steps as one made with an e-mail, and <strong>What should we call you?</strong> already carries your first name if Apple or Google shared it: keep it or change it. An account you already have goes straight into the app.'),
+        problem: tr('One more password is one more thing to forget. With the Apple or Google account already on your phone, getting in takes a single tap — and nothing about you is invented: only what Apple or Google share comes in, and your name stays yours to change.'),
+        steps: [
+          tr('Tap <strong>Continue with Apple</strong> or <strong>Continue with Google</strong>.'),
+          tr('If your age has not been confirmed on this phone yet, the app first asks once whether you are an adult, as it does for an account made with an e-mail: tap <strong>Yes, I’m 18 or older</strong>.'),
+          tr('Confirm in the Apple or Google window. If you close it, nothing happens and you are back where you were.')],
+        tip: tr('Already have an account with that e-mail and a password? The app tells you so: sign in with your e-mail and your password.') }] : []),
 
       /* VERIF (1 Sep 2026) — the pioneer gift is handed out by the server and
          the server only talks to a verified account, so somebody who never
@@ -99,13 +165,13 @@ function cfManualPatient() {
       { title: tr('Your Home at a glance'),
         shot: 'IMG_6943.png',
         where: [tr('Home')],
-        body: tr('Home opens on a living forest scene that grows as you log good days. From top to bottom: your <strong>avatar</strong> and name (tap it for Settings), the <strong>Flare Mode</strong> switch, your live <strong>Flare Radar</strong>, your <strong>Steps today</strong>, the <strong>Check-In</strong> button, <strong>Food Scan</strong> and your <strong>food journal</strong>, the <strong>Meditation</strong>, <strong>Entertainment</strong> and <strong>Tools</strong> cards, your <strong>upcoming appointments</strong> and the <strong>Health Sync</strong> invitation. Your friends live in the <strong>Community</strong> tab.'),
+        body: tr('Home opens on a living scene that grows as you log good days. From top to bottom: your <strong>avatar</strong> and name (tap it for Settings), the <strong>Flare Mode</strong> switch, your live <strong>Flare Radar</strong>, your <strong>Steps today</strong>, the <strong>Check-In</strong> button, <strong>Food Scan</strong> and your <strong>food journal</strong>, the <strong>Meditation</strong>, <strong>Entertainment</strong> and <strong>Tools</strong> cards, your <strong>upcoming appointments</strong> and the <strong>Health Sync</strong> invitation. Your friends live in the <strong>Community</strong> tab.'),
         problem: tr('Managing a chronic condition means juggling symptoms, food, medication, mood and appointments at once. Home pulls them into one gentle view so nothing important slips through the cracks.') },
 
       { title: tr('The Flare Mode switch'),
         shot: 'IMG_6944.png',
         where: [tr('Home')],
-        body: tr('Right on the forest sits the <strong>Flare Mode</strong> switch. Having a flare-up? Turn it on and the app becomes a calmer, quieter shelter focused on rest, hydration and gentle tracking. The first time, a short explanation shows how it works. Turn it off whenever you feel the flare is over — those days stay marked in <strong>cyan</strong> on your calendar and charts.'),
+        body: tr('Right on the picture at the top sits the <strong>Flare Mode</strong> switch. Having a flare-up? Turn it on and the app becomes a calmer, quieter shelter focused on rest, hydration and gentle tracking. The first time, a short explanation shows how it works. Turn it off whenever you feel the flare is over — those days stay marked in <strong>cyan</strong> on your calendar and charts.'),
         problem: tr('On the hardest days a busy app is the last thing you need. One switch strips everything back to what helps — and because it\u2019s a switch, ending the flare is as deliberate as starting it.'),
         tip: tr('Only you can turn Flare mode on or off — the app never decides for you.') },
 
@@ -275,7 +341,16 @@ function cfManualPatient() {
         steps: [
           tr('It is already on when you start, at <strong>21:03</strong> — three minutes after the hour most people set their medication for, so the two never collide.'),
           tr('Change the hour, or switch it off, on the first line at the top of your journal — or in the app settings, under <strong>Journal reminder</strong>. Both are the same switch.'),
-          tr('Switching the journal reminder off never silences your medication alarms: those are a different switch.')],
+          tr('Switching the journal reminder off never silences your medication alarms: those are a different switch.'),
+          /* CICLO 1.0.8i §4 — CFCkRem.due() answers nothing while the app's own
+             Notifications switch is off: no chime, no prompt, even with the app
+             open (checkinreminder.jsx). CICLO 1.0.8j §1 (Gerhard, 19 Oct: the
+             medication alarms keep ringing with the app open) — the step says the
+             three true things, rewritten in its slot of i18nmanual2026aq: the
+             journal silent even with the app open · ring/ringConfirm/ringSummary
+             (medalarm) never read cfNotifWanted() · app closed: mbSync sends
+             med:clear and ckBridgeSync ck:clear, so the phone shows nothing. */
+          tr('Switch <strong>Notifications</strong> off in the app settings and the journal reminder stays silent too, even while the app is open. Your medication alarms still ring if you have the app open. With the app closed, your phone alerts you to nothing — neither the journal nor your medication — while <strong>Notifications</strong> is off.')],
         tip: tr('Off is off: switch it off and it stays off, updates included. And if your phone has notifications blocked, the app says so out loud instead of showing you a switch that cannot reach you.') },
 
       /* CICLO 1.0.8a (29 Sep 2026) — the one-tap fix (notiffix.jsx). Every
@@ -461,8 +536,12 @@ function cfManualPatient() {
     title: tr('Meditation'),
     intro: tr('Small rituals for body, mind & spirit — a calm room whenever you need it.'),
     topics: [
+      /* UX41 (CICLO 1.0.8i) — IMG_6953.png showed the old order (the six Tools
+         first) and the old intro: replaced by the real menu with Zen Music on
+         top, under a NEW file name so no browser shows the old one from its
+         cache. IMG_6953.png stays in the folder as history. */
       { title: tr('A calm room'),
-        shot: 'IMG_6953.png',
+        shot: 'img-meditation-1018.png',
         where: [tr('Home'), tr('Meditation')],
         body: tr('A door for every mood, and behind each one a few quiet minutes: breathing that moves with you, grounding, gentle rituals for body, mind and spirit, and long pieces of zen music. Star your favourites to keep them at the top. Nothing here measures you — everything here holds you.'),
         problem: tr('Stress and symptoms feed each other, yet most meditation apps demand streaks and stats — one more thing to fail at. This room asks nothing of you: open a door, take your minutes, leave whenever you like.'),
@@ -563,12 +642,12 @@ function cfManualPatient() {
 
       { title: tr('The Tools room'),
         where: [tr('Home'), tr('Tools'), tr('Tools room')],
-        body: tr('At the top of <strong>Tools</strong>, a blue door opens the <strong>Tools room</strong> — a shared space to talk about these tools. It works like the Community wall: write a post, read the others, comment. What changes is the tag. Nobody comes here to talk about a diagnosis, so instead of conditions you pick one of fourteen topics — from <strong>Awareness</strong> and <strong>Ego</strong> to <strong>Letting go</strong>, <strong>Boundaries</strong> and <strong>Calmness</strong>. It is optional and nothing is ever pre-selected; tap the same tag twice and it comes off. Once tagged posts exist, a row of chips appears above the wall so you can read one topic at a time — <strong>All</strong> brings everything back.'),
-        problem: tr('A list of illnesses was the wrong question in this room. Topic tags let a thought find the people already thinking about the same thing, without anyone having to say a word about their body.'),
+        body: tr('At the top of <strong>Tools</strong>, a blue door opens the <strong>Tools room</strong> — a shared space to talk about these tools. It works like the Community wall, with one difference: these tools are for everybody, so nothing here is sorted by condition — there is no <strong>Where? Choose</strong> when you write, and the button at the top of the wall chooses only the language of the posts. What changes is the tag: you can pick one of fourteen topics — from <strong>Awareness</strong> and <strong>Ego</strong> to <strong>Letting go</strong>, <strong>Boundaries</strong> and <strong>Calmness</strong> — or tap <strong>Other topic</strong> and write your own, which the post shows exactly as you wrote it. It is optional and nothing is ever pre-selected; tap the same tag twice and it comes off. Once tagged posts exist, a row of chips appears under that button so you can read one topic at a time — <strong>Other topics</strong> gathers the topics people wrote themselves, and <strong>All</strong> brings everything back.'),
+        problem: tr('Topics let a thought find the people already thinking about the same thing. And because the room asks nothing about conditions, nobody has to say a word about their body to post here: every post in it is for everybody.'),
         steps: [
           tr('Open <strong>Tools</strong> on Home and tap <strong>Tools room</strong>.'),
-          tr('Tap <strong>New Post</strong>, pick a tool tag if one fits, and write.'),
-          tr('Use the chips above the wall to read one topic — or <strong>All</strong>.')],
+          tr('Tap <strong>What would you like to share?</strong>, pick a tool tag if one fits — or <strong>Other topic</strong> to write your own — and write.'),
+          tr('Use the chips above the wall to read one topic, <strong>Other topics</strong> or <strong>All</strong>.')],
         tip: tr('The tags name a topic, never a task: somewhere to leave a thought, not something to work on.') },
     ] },
 
@@ -623,10 +702,15 @@ function cfManualPatient() {
     title: tr('Community'),
     intro: tr('People who truly get it. Posts, friends and private chats — this is the heart that gives the app its name.'),
     topics: [
+      /* CICLO 1.0.8h — the new wall (postfeed.jsx · postcard.jsx): the body is
+         rewritten IN ITS INDEX SLOT (CF_MANUAL_KEYS_P[91], i18nmanualkeys + the
+         eight i18nmanual-xx tables); title and «where» keep their slots. It no
+         longer says «verified doctors» (the role is self-declared), and its
+         last sentence is word for word the old one. The shot (IMG_6951.png)
+         showed the old wall: taken off, the file stays as history. */
       { title: tr('Posts & the feed'),
-        shot: 'IMG_6951.png',
         where: [tr('Community'), tr('Posts')],
-        body: tr('Open <strong>Community</strong> and you land on <strong>Posts</strong> — a feed where patients (and verified doctors) share experiences, questions and small wins. Tap <strong>\u2764</strong> to support a post, the bubble to comment, or the big <strong>New Post</strong> button to share your own. The tabs across the top switch between Posts, Chronic Friends, Best Chronic Friends and Doctors.'),
+        body: tr('Open <strong>Community</strong> and you land on <strong>Posts</strong> — a wall where people share experiences, questions and small wins, each post across the whole screen, with its photo when it has one (tap the photo to see it full size). Tap <strong>❤</strong> to support a post, the bubble to comment, and <strong>Add</strong> next to a name to ask for that person’s friendship. To share your own, tap <strong>What would you like to share?</strong>: in <strong>Create post</strong>, <strong>Where? Choose</strong> comes with nothing marked — you decide whether the post is for <strong>All conditions</strong> or for yours — and the language is your app’s, which you can change. The button at the top of the wall chooses which posts you see. The tabs across the top switch between Posts, Chronic Friends, Best Chronic Friends and Doctors.'),
         problem: tr('Chronic illness can be isolating, and friends who haven\u2019t lived it often just don\u2019t understand. Here you\u2019re surrounded by people who instantly do — advice, reassurance and \u201cme too\u201d from people walking the same road.') },
 
       /* CICLO 1.0.7f §3 (28 Sep 2026) — «Translate ▾» under every post
@@ -639,9 +723,31 @@ function cfManualPatient() {
          languages». NO shot: — no capture of the control exists yet. */
       ...(canTranslate ? [{ title: tr('Read a post in your language'),
         where: [tr('Community'), tr('Posts')],
-        body: tr('Under each post, <strong>Translate</strong> lists the app\u2019s languages, each under its own name, with yours first. Pick one and the title and the text of that post change into it right there, with a small line that says which language it was written in; <strong>See original</strong> brings back the words exactly as they were written. It works the same way in the Tools room.'),
+        body: tr('Under each post, when the wall shows <strong>All languages</strong> and the post is written in a language other than yours, <strong>Translate</strong> lists the app’s languages, each under its own name, with yours first. Pick one and the text of that post changes into it right there, with a small line that says which language it was written in; <strong>See original</strong> brings back the words exactly as they were written. With one language chosen in the filter, every post is already in that language, so there is nothing to translate. It works the same way in the Tools room.'),
         problem: tr('The people here write in many languages. A post you cannot read is a voice you cannot hear, so any post can be read in yours without leaving the feed.'),
         tip: tr('Your phone translates the post itself, so the text never leaves your phone. The first time you choose a language, your phone may need to download it, so it can take a moment: <strong>Translating\u2026</strong> stays on the post until it is ready. Comments are not translated yet.') }] : []),
+
+      /* CICLO 1.0.8h — three new topics (strings in i18nmanual2026ap, every
+         <strong> the live word of its language). «Post with a photo» only where
+         the photo engine is (hasPhotos), «Posts from Chronic Friends» only where
+         CFOfficial is (hasOfficial). NO shot: no capture of the new wall yet. */
+      { title: tr('Filter the wall'),
+        where: [tr('Community'), tr('Posts')],
+        body: tr('The button at the top of the wall names what you are reading: a condition and a language. Tap it and <strong>Filter posts</strong> opens. Under <strong>Condition</strong>, keep <strong>All conditions</strong> or choose only yours — the posts written for everyone stay too; what goes is the posts about other conditions. Under <strong>Language of the posts</strong>, choose one language or <strong>All languages</strong>. Tap <strong>See posts</strong> and the wall follows. At first it shows all conditions, in the language of your app.'),
+        problem: tr('Not every post is about your condition, and not every post is written in your language. Chosen once, the wall shows what you came for — without translating every post to find the ones you can read.'),
+        tip: tr('Your choice is kept for next time. The Tools room has its own button: there it chooses only the language, and the topics are the chips under it.') },
+
+      ...(hasPhotos ? [{ title: tr('Post with a photo'),
+        where: [tr('Community'), tr('Posts')],
+        body: tr('In <strong>Create post</strong>, <strong>Add to your post</strong> lets you add a photo from your phone — or tap the photo icon beside <strong>What would you like to share?</strong> and your phone’s picker opens at once. The photo appears under your text, edge to edge, as it will look on the wall; its ✕ takes it away. A single photo per post, and a photo alone is enough to publish.'),
+        problem: tr('Some days a picture says it better than a paragraph — a walk, a plate, the view from your window.'),
+        tip: tr('Before it leaves your phone, the photo is made smaller and its location is removed, so nobody can tell where it was taken. If it cannot be uploaded, nothing is published: your text and your photo stay on the screen so you can try again.') }] : []),
+
+      ...(hasOfficial ? [{ title: tr('Posts from Chronic Friends'),
+        where: [tr('Community'), tr('Posts')],
+        body: tr('Every day the <strong>Chronic Friends</strong> account shares a post with a picture on the Community wall, about one of the conditions of the app, and another in the Tools room, about one of its tools. You recognise them by the logo and the <strong>Official</strong> label next to the name. Each one reaches you once, in your language — even with <strong>All languages</strong> you see a single copy.'),
+        problem: tr('A small daily dose of something useful, from the team that makes the app, in the place where you already read.'),
+        tip: tr('They are not medical advice: always talk to your doctor about your health. You can save, copy or report them like any other post.') }] : []),
 
       /* BUILD 37 (1 Sep 2026) — the row of a person in the census lost its
          compact «Add as friend» button: it ate the width and cut the names

@@ -51,7 +51,11 @@
    fallback, so this can never be a dead tap. */function ckOpenJournal(){try{if(window.cfOpenCheckinFlow&&cfOpenCheckinFlow())return;}catch(e){}const day=ckTodayKey();try{window.dispatchEvent(new CustomEvent('cf-nav-tab',{detail:'schedule'}));}catch(e){}try{window.dispatchEvent(new CustomEvent('cf-journal-open-day',{detail:day}));}catch(e){}}const CFCkRem={/* Born ON: only somebody who switched it off himself is off. A
      reminder that switches itself back on after an update is a reason
      to uninstall, so the stored `false` wins for ever. */get(){const s=ckRead(CKREM_KEY,null);return{on:s?!!s.on:true,time:s&&s.time||CKREM_DEFAULT_TIME};},set(patch){const next={...this.get(),...patch};ckWrite(CKREM_KEY,next);try{window.dispatchEvent(new CustomEvent('cf-ckrem'));}catch(e){}ckBridgeSync(true);},enable(time){this.set({on:true,time:time||this.get().time});},disable(){this.set({on:false});},/* once a day, whatever happens next — pruned to today only */markRung(key){const today='ckrem|'+ckTodayKey();const r=ckRead(CKREM_RUNG_KEY,{});Object.keys(r).forEach(k=>{if(k!==today)delete r[k];});r[key]=1;ckWrite(CKREM_RUNG_KEY,r);},/* the ONE due-test, read lazily by the alarm engine's scanner.
-     Window: from the chosen time until midnight, same day. */due(){const st=this.get();if(!st.on||!st.time)return null;const key='ckrem|'+ckTodayKey();if(ckRead(CKREM_RUNG_KEY,{})[key])return null;/* 🔴 7 Sep 2026 — the two silences are gone, both by Gerhard's own
+     Window: from the chosen time until midnight, same day. */due(){const st=this.get();if(!st.on||!st.time)return null;/* CICLO 1.0.8i §4 (Gerhard: «Que no suene si están apagadas») — with the
+       app's own Notifications switch OFF (cf_notif_pref_v1 ≠ '1', cfNotifWanted
+       in medalarm.jsx) the reminder is silent INSIDE the app too: no chime,
+       no prompt, and nothing is marked — switch them back on the same evening
+       and it can still ring. With them on, its own switch rules as before. */if(window.cfNotifWanted&&!cfNotifWanted())return null;const key='ckrem|'+ckTodayKey();if(ckRead(CKREM_RUNG_KEY,{})[key])return null;/* 🔴 7 Sep 2026 — the two silences are gone, both by Gerhard's own
        decision: it rings DURING A FLARE (flare days are the ones that
        matter most to a doctor) and it rings on a day ALREADY LOGGED
        (almost nobody will have filled it in by hand beforehand, and

@@ -41,7 +41,11 @@
     'cf_healthsync_v1', 'cf_food_tolerance_v1', 'cf_streak_v2', 'cf_ncomfort_v1',
     'cf_rating_v1', 'cf_notif_pref_v1', 'cf_notify_country_v1', 'cf_onboarded_v1',
     'cf_scanusage_v1', 'cf_last_export_v1', 'cf_radar_optout_v1', 'cf_member_since_v1',
-    'cf_saved_posts_v1', 'cf_drcf_sessions_v1', 'cf_consults_v1', 'cf_consult_invites_v1',
+    'cf_saved_posts_v1',
+    /* MURO1 (18 oct 2026): el filtro del muro y de la Sala (enfermedad + idioma) se queda
+       guardado y sigue a la persona en otro móvil, como las publicaciones guardadas. */
+    'cf_feed_filter_v1',
+    'cf_drcf_sessions_v1', 'cf_consults_v1', 'cf_consult_invites_v1',
     'cf_pt_consults_v1', 'cf_doc_live_start_v1', 'cf_doc_req_state_v1', 'cf_best_friends_v1',
 
     /* 🔴 FB21 (16 sep 2026) — LAS CAJAS ANTIGUAS, LAS DEL GUION. Esta lista se
@@ -89,7 +93,21 @@
   function usable() { return !!(ST() && ST().available && CF() && CF().available); }
   function uid() { try { var u = CF().currentUser(); return u && u.uid || null; } catch (e) { return null; } }
   function verified() { try { var u = CF().currentUser(); return !!(u && u.emailVerified); } catch (e) { return false; } }
-  function active() { return usable() && !!uid() && verified(); }
+  /* LOGOUT1 (21 oct 2026) — solo con alguien DENTRO de la app y que sea la
+     misma cuenta que la de Firebase. Antes bastaba Firebase: tras «Tanca la
+     sessió» (que no salía de Firebase) la sync seguía viva con la pantalla de
+     entrar delante, bajaba los datos de salud al espacio 'anon' del móvil y
+     podía subir a la nube lo que hubiera en 'anon'. */
+  function localOk() {
+    try {
+      var a = JSON.parse(localStorage.getItem('cf_auth_v1'));
+      if (!a) return false;
+      var le = String(a.email || '').toLowerCase().trim();
+      var u = CF().currentUser(), fe = String((u && u.email) || '').toLowerCase().trim();
+      return !le || !fe || le === fe;
+    } catch (e) { return false; }
+  }
+  function active() { return usable() && !!uid() && verified() && localOk(); }
 
   /* setItem original (para escribir valores bajados SIN disparar el interceptor) */
   var rawSet = window.localStorage.setItem.bind(window.localStorage);
@@ -244,6 +262,7 @@
     /* 1) escucha la colección de salud en la nube → baja lo más nuevo (LWW).
           Se asigna colUnsub PRIMERO para que maybeStart() no reentre en startSync. */
     colUnsub = ST().onCol('users/' + u + '/health', function (docs) {
+      if (!active()) return;                          /* LOGOUT1: la cuenta local ya no está (o es otra): no se baja nada a 'anon' */
       var meta = loadMeta();
       docs.forEach(function (d) {
         var base = d._id;

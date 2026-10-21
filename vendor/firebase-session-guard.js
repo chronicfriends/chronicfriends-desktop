@@ -47,6 +47,19 @@
       return (a && a.email) ? String(a.email).toLowerCase().trim() : null;
     } catch (e) { return null; }
   }
+  function hasLocalAccount() {
+    try { return !!JSON.parse(localStorage.getItem('cf_auth_v1')); } catch (e) { return false; }
+  }
+  /* email de la cuenta de Firebase (Apple puede dejarlo solo en providerData) */
+  function fbEmail(u) {
+    var em = u && u.email;
+    try {
+      if (!em && u && u.providerData) {
+        for (var i = 0; i < u.providerData.length; i++) { if (u.providerData[i] && u.providerData[i].email) { em = u.providerData[i].email; break; } }
+      }
+    } catch (e) {}
+    return String(em || '').toLowerCase().trim() || null;
+  }
 
   /* clave de persistencia localStorage del SDK: firebase:authUser:<apiKey>:<appName> */
   function sdkKey() {
@@ -107,7 +120,19 @@
       auth.onAuthStateChanged(function (u) {
         if (first) {
           first = false;
-          if (u) return;                              /* sesión de nube viva: no hay nada que rescatar */
+          if (u) {                                    /* sesión de nube viva: no hay nada que rescatar… */
+            /* LOGOUT1 (21 oct 2026) — …pero está HUÉRFANA si en la app no hay
+               nadie dentro (el «Tanca la sessió» de antes no salía de Firebase)
+               o si dentro hay OTRA cuenta: la sync y la comunidad trabajarían
+               con una persona y la pantalla enseñaría a otra. Se cierra; la
+               cuenta local, si la hay, no se toca. */
+            var le = localEmail(), fe = fbEmail(u);
+            if (!hasLocalAccount() || (le && fe && le !== fe)) {
+              try { console.log('[CFSessionGuard] sesión de nube huérfana (' + (hasLocalAccount() ? 'otra cuenta' : 'nadie dentro') + ') — cerrándola'); } catch (e) {}
+              try { FB().signOutFb(); } catch (e) {}
+            }
+            return;
+          }
           setTimeout(function () {
             if (auth.currentUser) return;             /* apareció durante la gracia */
             var em = localEmail();

@@ -28,6 +28,8 @@
   }
   function FB() { return window.CFFirebase; }
   function available() { return !!(window.CFFirebase && window.CFFirebase.available); }
+  var logoutBusy = false;                              /* LOGOUT1: un solo cierre de sesión a la vez */
+  var LOGOUT_MAX_MS = 5000;                            /* LOGOUT1: pase lo que pase, a los 5 s se sale */
 
   /* ---- toast flotante (independiente del árbol React del login) -------- */
   var _toastEl = null, _toastTimer = null;
@@ -358,9 +360,72 @@
         }
       } catch (e) {}
       wipeAndReload();                                 /* sin Firebase (offline / cuenta solo local): borra local */
+    },
+
+    /* LOGOUT1 (21 oct 2026) — «Tanca la sessió» DE VERDAD: cierra también la
+       sesión de Firebase. Antes solo se borraba cf_auth_v1 y se recargaba; el
+       SDK restauraba al usuario al arrancar y, con la pantalla de entrar
+       delante, la sincronización de salud seguía con su cuenta (bajando sus
+       datos al espacio 'anon' del móvil) y RevenueCat seguía con su uid. Lo
+       destapó la prueba 5 de LOGIN1 en el iPhone (Historial CF [3401]).
+       El ORDEN importa:
+         1) subir lo pendiente con la cuenta aún puesta: CFSync.pushNow lee las
+            cajas del espacio de ESTA cuenta (después de CFAuth.logout leería
+            las de 'anon', vería null y borraría la caja en la nube);
+         2) esperar a que Firestore confirme esas escrituras, con tope (sin
+            red se quedan en la cola local de esta cuenta y salen cuando
+            vuelva a entrar);
+         3) salir de Firebase (el guardián SEC22 se lleva con ello el espejo);
+         4) borrar la sesión local y recargar.
+       Nunca se queda colgado: cada espera tiene tope y un fallo sigue adelante.
+       Lo llama el botón de Claude Design (encargo 1.0.8k §3d); hasta entonces
+       el envoltorio de CFAuth.logout de abajo hace 1) y 3) sin esperar. */
+    logoutFull: function () {
+      if (logoutBusy) return;
+      logoutBusy = true;
+      var done = false;
+      var finish = function () {
+        if (done) return; done = true;
+        try { window.CFAuth && CFAuth.logout(); } catch (e) {}
+        try { location.reload(); } catch (e) {}
+      };
+      var upTo = function (p, ms) {                    /* espera p, pero nunca más de ms */
+        return Promise.race([Promise.resolve(p).catch(function () {}), new Promise(function (r) { setTimeout(r, ms); })]);
+      };
+      setTimeout(finish, LOGOUT_MAX_MS);
+      try { window.CFSync && CFSync.pushNow && CFSync.pushNow(); } catch (e) {}
+      upTo(new Promise(function (r) { setTimeout(r, 250); }).then(function () {   /* deja que las subidas lleguen a la cola */
+        try { return window.firebase.firestore().waitForPendingWrites(); } catch (e) { return null; }
+      }), 2500).then(function () {
+        var out = null;
+        try { if (available() && FB().currentUser()) out = FB().signOutFb(); } catch (e) { out = null; }
+        return upTo(out, 1500);
+      }).then(finish, finish);
     }
   };
 
   window.CFAuthFB = CFAuthFB;
+
+  /* LOGOUT1 — mientras el botón de Claude Design llame a CFAuth.logout() y
+     recargue en el acto (sin esperar a nadie), es el propio CFAuth.logout()
+     el que sube lo pendiente y empieza a salir de Firebase ANTES de soltar la
+     cuenta local. La recarga puede cortar la salida a medias: entonces la
+     remata el guardián SEC22 al arrancar (sesión de nube sin nadie dentro →
+     fuera). CFAuth vive en build/auth.js, que carga DESPUÉS que vendor/: se
+     envuelve al terminar de cargar la página. Idempotente. */
+  function wrapLogout() {
+    var A = window.CFAuth;
+    if (!A || typeof A.logout !== 'function' || A.logout.__cfFull) return;
+    var plain = A.logout;
+    var full = function () {
+      try { if (A.get && A.get() && window.CFSync && CFSync.pushNow) CFSync.pushNow(); } catch (e) {}
+      try { if (available() && FB().currentUser()) FB().signOutFb(); } catch (e) {}
+      return plain.apply(this, arguments);
+    };
+    full.__cfFull = true;
+    A.logout = full;
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wrapLogout);
+  else wrapLogout();
   try { console.log('[CFAuthFB] cableado del login listo · Firebase available=' + available()); } catch (e) {}
 })();

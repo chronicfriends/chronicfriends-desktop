@@ -30,7 +30,7 @@
     id: "Musik zen", tr: "Zen müziği", ru: "Дзен-музыка", vi: "Nhạc thiền", ar: "موسيقى زِن",
   },
   "Four long pieces to rest, meditate or fall asleep to — press play and put the phone down.": {
-    es: "Cuatro piezas largas para descansar, meditar o quedarte dormido: dale al play y deja el teléfono.",
+    es: "Cuatro piezas largas para descansar, meditar o dormirte: dale al play y deja el teléfono.",
     ca: "Quatre peces llargues per descansar, meditar o adormir-te: prem play i deixa el telèfon.",
     fr: "Quatre longues pièces pour vous reposer, méditer ou vous endormir — appuyez sur lecture et posez le téléphone.",
     de: "Vier lange Stücke zum Ausruhen, Meditieren oder Einschlafen — auf Abspielen tippen und das Handy weglegen.",

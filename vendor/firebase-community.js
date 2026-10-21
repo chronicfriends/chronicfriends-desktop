@@ -72,8 +72,14 @@
      dispositivo: la identidad en la nube es authorUid (uid de Firebase, anónimo).
      Mismo saneado explícito que pushComment — nada de Object.assign(p) que
      arrastraría `author` y cualquier campo local. */
-  var POST_PUBLIC_KEYS = ['id', 'title', 'body', 'category', 'likes', 'comments',
-    'name', 'role', 'time', 'initials', 'condTag', 'deleted', 'editedAt'];
+  /* MURO1 (18 oct 2026): FUERA `likes` y `comments`. El autor vuelve a subir sus posts
+     en cada arranque (pushAllOwn) y su copia local lleva likes:0 → el merge dejaba a 0
+     el contador de la nube y se perdían los «me gusta» de los demás (descuadre del 14 oct,
+     cal [261]). El contador lo llevan SOLO los batches de like (onlyLikeCountDelta, que
+     parte de 0 si el campo no existe). DENTRO los campos del muro nuevo: `image` (la
+     foto ya subida: {url,w,h,path}), `lang` (idioma del post) y `cond` («¿Dónde?»). */
+  var POST_PUBLIC_KEYS = ['id', 'title', 'body', 'category',
+    'name', 'role', 'time', 'initials', 'condTag', 'deleted', 'editedAt', 'image', 'lang', 'cond'];
 
   /* ---- PUSH: sube un post propio a la nube ----------------------------- */
   function pushPost(p, isRetry) {
@@ -110,7 +116,26 @@
        para que likesFor = post.likes(0) + likes[id].length no doble-cuente. */
     p.likes = 0;
     p._remote = true;
+    p._col = POSTS_COL;            /* MURO1: likes y comentarios se escriben en SU colección */
     return p;
+  }
+  /* MURO1 · PUB1: una publicación de la cuenta oficial (community_official) */
+  function toOfficialPost(d) {
+    var p = toPost(d);
+    p._col = OFFICIAL_COL;
+    p._official = true;
+    return p;
+  }
+  /* colección en la nube de un post local (community_posts salvo las oficiales) */
+  function colOf(localId) {
+    var P = POSTS(); var list = (P && P.userPosts) || [];
+    for (var i = 0; i < list.length; i++) if (list[i] && list[i].id === localId) return list[i]._col || POSTS_COL;
+    return POSTS_COL;
+  }
+  function findPost(localId) {
+    var P = POSTS(); var list = (P && P.userPosts) || [];
+    for (var i = 0; i < list.length; i++) if (list[i] && list[i].id === localId) return list[i];
+    return null;
   }
 
   /* id de nube (community_posts/{cid}) de un post local, buscándolo por su id */
@@ -132,15 +157,31 @@
   function startListen() {
     if (colUnsub) return;
     colUnsub = ST().onCol(POSTS_COL, function (docs) {
+      postDocs = docs || [];
+      mergeFeed();
+    }, function (q) {
+      /* orderBy+limit: solo los FEED_LIMIT posts más recientes → acota las
+         lecturas de Blaze a ~FEED_LIMIT por sesión en vez de la colección entera.
+         orderBy('ts') sobre un único campo no exige índice compuesto; pushPost
+         siempre escribe `ts`, así que ningún post queda fuera del orden. Si el SDK
+         rechazara la query, onCol degrada devolviendo un unsub inerte y el feed
+         local sigue intacto. */
+      try { return q.orderBy('ts', 'desc').limit(FEED_LIMIT); } catch (e) { return q; }
+    });
+  }
+  /* MURO1 · PUB1: UNA sola fusión para los dos orígenes (posts de las personas +
+     publicaciones oficiales). Lo de antes, sin cambios, más las oficiales. */
+  function mergeFeed() {
       var P = POSTS(); if (!P) return;
-      var me = uid();
+      var docs = postDocs.concat(officialDocs);
       var own = (P.userPosts || []).filter(function (p) { return p && !p._remote; });   /* TODO lo local se conserva */
       /* SL9: hidden===true = retirado por moderación → no se pinta.
          22 jul: se incluyen TAMBIÉN los docs propios (authorUid === me): si el
          local está vacío (otro dispositivo, o tras la migración por cuentas)
          los posts propios se recuperan de la nube; el dedupe por id de abajo
          conserva la copia local cuando existe. */
-      var remote = docs.filter(function (d) { return !d._deleted && d.hidden !== true; }).map(toPost);
+      var remote = postDocs.filter(function (d) { return !d._deleted && d.hidden !== true; }).map(toPost)
+        .concat(officialDocs.filter(function (d) { return !d._deleted && d.hidden !== true; }).map(toOfficialPost));
       var seen = {}, merged = [];
       own.concat(remote).forEach(function (p) { if (p && p.id && !seen[p.id]) { seen[p.id] = 1; merged.push(p); } });
       merged.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
@@ -154,17 +195,70 @@
       });
       cloudCount = cc;
       recomputeLikes();   /* recomputeLikes hace emit() */
-    }, function (q) {
-      /* orderBy+limit: solo los FEED_LIMIT posts más recientes → acota las
-         lecturas de Blaze a ~FEED_LIMIT por sesión en vez de la colección entera.
-         orderBy('ts') sobre un único campo no exige índice compuesto; pushPost
-         siempre escribe `ts`, así que ningún post queda fuera del orden. Si el SDK
-         rechazara la query, onCol degrada devolviendo un unsub inerte y el feed
-         local sigue intacto. */
-      try { return q.orderBy('ts', 'desc').limit(FEED_LIMIT); } catch (e) { return q; }
+  }
+  function stopListen() { if (colUnsub) { try { colUnsub(); } catch (e) {} colUnsub = null; } postDocs = []; }
+
+  /* ---- MURO1 · PUB1 (18 oct 2026): LAS PUBLICACIONES DE «CHRONIC FRIENDS» ----
+     Viven en community_official/{serie__idioma} y solo las escribe el servidor (Admin,
+     desde la Pi). Se piden SOLO en los idiomas que se ven —el de la app y los que haya
+     elegido el filtro del muro o de la Sala (cf_feed_filter_v1)—: así las 16 versiones
+     de cada publicación diaria no llenan la ventana de los posts de las personas.
+     Índice compuesto (lang ASC, ts DESC) en firestore.indexes.json. Se usa el SDK
+     directo (no CFStore.onCol) para que un índice que falte deje AVISO en consola en
+     vez de un muro vacío y mudo. */
+  var OFFICIAL_COL = 'community_official';
+  var OFFICIAL_LIMIT = 120;
+  var postDocs = [], officialDocs = [];
+  var officialUnsub = null, officialLangs = '';
+  var CF_LANG_CODES = ['en', 'es', 'ca', 'fr', 'de', 'it', 'pt', 'zh', 'ja', 'ko', 'hi', 'id', 'tr', 'ru', 'vi', 'ar'];
+  function wantedLangs() {
+    var L = {};
+    try { var a = (window.I18n && I18n.lang) || 'en'; L[CF_LANG_CODES.indexOf(a) !== -1 ? a : 'en'] = 1; } catch (e) { L.en = 1; }
+    try {
+      var f = JSON.parse(localStorage.getItem('cf_feed_filter_v1') || 'null');
+      ['community', 'room'].forEach(function (k) {
+        var v = f && f[k] && f[k].lang;
+        if (v && v !== 'all' && CF_LANG_CODES.indexOf(v) !== -1) L[v] = 1;
+      });
+    } catch (e) {}
+    return Object.keys(L).sort().slice(0, 10);   /* where-in admite 10 valores */
+  }
+  function startListenOfficial() {
+    var want = wantedLangs();
+    if (officialUnsub && want.join(',') === officialLangs) return;
+    stopListenOfficial();
+    officialLangs = want.join(',');
+    try {
+      var q = window.firebase.firestore().collection(OFFICIAL_COL)
+        .where('lang', 'in', want).orderBy('ts', 'desc').limit(OFFICIAL_LIMIT);
+      officialUnsub = q.onSnapshot(function (snap) {
+        var out = [];
+        snap.forEach(function (d) { var o = d.data() || {}; o._id = d.id; out.push(o); });
+        officialDocs = out;
+        mergeFeed();
+      }, function (e) {
+        try { console.warn('[CFCommunity] publicaciones oficiales sin leer: ' + ((e && e.code) || e)); } catch (x) {}
+      });
+    } catch (e) { officialUnsub = null; }
+  }
+  function stopListenOfficial() {
+    if (officialUnsub) { try { officialUnsub(); } catch (e) {} officialUnsub = null; }
+    officialLangs = ''; officialDocs = [];
+  }
+
+  /* ---- MURO1 · CFOfficial: ¿este uid es la cuenta oficial? ----------------
+     La lista sale de system/official.uids, que SOLO escribe el servidor (reglas:
+     system → lee quien tenga sesión, nadie escribe). Nunca del name/role del post,
+     que los pone el cliente. Sin el doc → nadie es oficial. */
+  var officialUids = [], officialDocUnsub = null;
+  function startOfficialDoc() {
+    if (officialDocUnsub) return;
+    officialDocUnsub = ST().onDoc('system/official', function (d) {
+      officialUids = (d && Object.prototype.toString.call(d.uids) === '[object Array]') ? d.uids.slice(0, 10) : [];
+      try { var P = POSTS(); if (P && P.emit) P.emit(); } catch (e) {}
     });
   }
-  function stopListen() { if (colUnsub) { try { colUnsub(); } catch (e) {} colUnsub = null; } }
+  function stopOfficialDoc() { if (officialDocUnsub) { try { officialDocUnsub(); } catch (e) {} officialDocUnsub = null; } officialUids = []; }
 
   /* ---- LIKES (FB3b · denormalizado) -----------------------------------
      Local: CFPosts.likes = { postId: [entradas,...] }; likesFor = post.likes(0) +
@@ -219,7 +313,7 @@
     if (!active()) return;
     var cid = cidById(localId); if (!cid) return;
     var myUid = uid();
-    var postPath = POSTS_COL + '/' + cid;
+    var postPath = colOf(localId) + '/' + cid;              /* MURO1: la colección de ESE post */
     var likePath = postPath + '/likes/' + myUid;
     var delta = liked ? 1 : -1;
     var data = { localId: localId, postCid: cid, at: now(), uid: myUid };   /* uid → listener where uid==yo */
@@ -306,7 +400,7 @@
     if (!active() || !isOwnComment(c)) return;
     var cid = cidById(postLocalId); if (!cid) return;                 /* el post debe existir en la nube */
     var text = String(c.text || ''); if (!text || text.length > 2000) return;  /* fuera de contrato → no subir */
-    var path = POSTS_COL + '/' + cid + '/comments';
+    var path = colOf(postLocalId) + '/' + cid + '/comments';   /* MURO1: la colección de ESE post */
     ST().colSet(path, commentDocId(c.ts), commentDoc(c)).then(function (r) {
       if (r && r.ok) return;
       if (!isRetry && r && String(r.code).indexOf('permission-denied') >= 0) {
@@ -418,7 +512,23 @@
         try {
           if (okDel) {
             var cid = cidById(postId);
-            if (cid) ST().del(POSTS_COL + '/' + cid + '/comments/' + commentDocId(ts));
+            if (cid) ST().del(colOf(postId) + '/' + cid + '/comments/' + commentDocId(ts));
+          }
+        } catch (e) {}
+        return okDel;
+      };
+    }
+    /* MURO1: borrar MI post → la lápida sube al momento (antes solo llegaba a los demás
+       cuando el autor volvía a abrir la app) y su foto se borra de Storage. */
+    if (typeof P.deletePost === 'function') {
+      var origDP = P.deletePost.bind(P);
+      P.deletePost = function (id) {
+        var before = findPost(id);
+        var okDel = origDP(id);
+        try {
+          if (okDel && before && isOwn(before)) {
+            pushPost(Object.assign({}, before, { deleted: true }));
+            if (before.image && before.image.path && window.CFPostPhotos && CFPostPhotos.remove) CFPostPhotos.remove(before.image.path);
           }
         } catch (e) {}
         return okDel;
@@ -428,11 +538,15 @@
     try { CF().refreshToken(); } catch (e) {}
     (P.userPosts || []).forEach(function (p) { if (isOwn(p)) pushPost(p); });
     startListen();
+    startOfficialDoc();
+    startListenOfficial();
     startListenLikes();
     pushAllOwnComments();
     startListenComments();
     try { console.log('[CFCommunity] posts + likes + comentarios en red ACTIVOS'); } catch (e) {}
   }
+
+  setInterval(function () { try { if (hooked && active()) startListenOfficial(); } catch (e) {} }, 3000);
 
   var poll = null;
   function ensure() {
@@ -444,14 +558,19 @@
     if (CF() && CF().onState) {
       CF().onState(function (u) {
         if (u && u.emailVerified) { if (!poll && !hooked) poll = setInterval(ensure, 1200); ensure(); }
-        else { stopListen(); stopListenLikes(); stopListenComments(); cloudCount = {}; myCloudLikes = {}; myLikePending = {}; likeBase = {}; }
+        else { stopListen(); stopListenOfficial(); stopOfficialDoc(); stopListenLikes(); stopListenComments(); cloudCount = {}; myCloudLikes = {}; myLikePending = {}; likeBase = {}; }
       });
     }
   } catch (e) {}
 
+  window.CFOfficial = {
+    isOfficial: function (u) { return !!u && officialUids.indexOf(u) !== -1; },
+    get available() { return !!officialDocUnsub; }
+  };
   window.CFCommunity = {
     pushAllOwn: pushAllOwn, pushAllOwnComments: pushAllOwnComments,
-    _startListen: startListen, _startListenComments: startListenComments,
+    _startListen: startListen, _startListenComments: startListenComments, _startListenOfficial: startListenOfficial,
+    _wantedLangs: wantedLangs, _mergeFeed: mergeFeed,
     _active: active, _hooked: function () { return hooked; }, _posts: POSTS
   };
   try { console.log('[CFCommunity] módulo de posts en red cargado'); } catch (e) {}
