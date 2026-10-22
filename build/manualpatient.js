@@ -39,6 +39,12 @@ function cfManualPatient() {
      The 6-digit code exists only without it (this preview). Asked at every paint, like
      hasSocial; the app always has the engine. */
   const hasAuthEngine = !!(window.CFAuthFB && window.CFAuthFB.signUp);
+  /* CICLO 1.0.8m §4 — an account that only signs in with Apple or Google has no password:
+     where the founder's layer can say so (window.CFAuthFB.hasPassword — the very test
+     Settings makes before it draws «Change password») the row is not there for such an
+     account, and the Apple / Google topic says so in its tip. Without it the row is always
+     drawn, so the old tip stays. Asked at every paint, like hasAuthEngine. */
+  const hasPwRule = !!(window.CFAuthFB && typeof window.CFAuthFB.hasPassword === 'function');
 
   return [
 
@@ -109,7 +115,12 @@ function cfManualPatient() {
           tr('Tap <strong>Continue with Apple</strong> or <strong>Continue with Google</strong>.'),
           tr('If your age has not been confirmed on this phone yet, the app first asks once whether you are an adult, as it does for an account made with an e-mail: tap <strong>Yes, I’m 18 or older</strong>.'),
           tr('Confirm in the Apple or Google window. If you close it, nothing happens and you are back where you were.')],
-        tip: tr('Already have an account with that e-mail and a password? The app tells you so: sign in with your e-mail and your password.') }] : []),
+        /* CICLO 1.0.8m §4 — with hasPwRule the tip is the same tip, word for word, + ONE
+           sentence: no Chronic Friends password, so Settings shows no <strong>Change
+           password</strong> (i18nmanual2026ar). Without it, the old tip (i18nmanual2026aq). */
+        tip: hasPwRule
+          ? tr('Already have an account with that e-mail and a password? The app tells you so: sign in with your e-mail and your password. An account created with Apple or Google has no Chronic Friends password, so Settings does not show <strong>Change password</strong>.')
+          : tr('Already have an account with that e-mail and a password? The app tells you so: sign in with your e-mail and your password.') }] : []),
 
       /* VERIF (1 Sep 2026) — the pioneer gift is handed out by the server and
          the server only talks to a verified account, so somebody who never

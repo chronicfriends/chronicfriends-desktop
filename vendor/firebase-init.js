@@ -54,6 +54,7 @@
       signOutFb: function () { return Promise.resolve({ ok: true }); },
       deleteAccount: function () { return Promise.resolve({ ok: false, code: 'sdk-missing' }); },
       reauthenticate: function () { return Promise.resolve({ ok: false, code: 'sdk-missing' }); },
+      updatePassword: function () { return Promise.resolve({ ok: false, code: 'sdk-missing' }); },
       refreshToken: function () { return Promise.resolve({ ok: false, code: 'sdk-missing' }); },
       sendPasswordReset: function () { return Promise.resolve({ ok: false, code: 'sdk-missing' }); },
       currentUser: function () { return null; },
@@ -196,6 +197,17 @@
       try {
         var cred = window.firebase.auth.EmailAuthProvider.credential(u.email, String(password || ''));
         return u.reauthenticateWithCredential(cred).then(function () { return ok(); }).catch(fail);
+      } catch (e) { return Promise.resolve(fail(e)); }
+    },
+
+    /* PW1 (22 oct 2026, Historial CF [3473]) — cambia la contraseña de la cuenta en
+       Firebase. Exige una sesión RECIENTE: quien llama reautentica antes
+       (CFAuthFB.changePassword hace las dos cosas, en ese orden). */
+    updatePassword: function (pw) {
+      var u = auth.currentUser;
+      if (!u) return Promise.resolve({ ok: false, code: 'no-current-user' });
+      try {
+        return u.updatePassword(String(pw || '')).then(function () { return ok(); }).catch(fail);
       } catch (e) { return Promise.resolve(fail(e)); }
     },
 

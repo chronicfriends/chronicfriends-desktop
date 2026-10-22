@@ -68,6 +68,27 @@
     return T('fb_err_generic', 'Something went wrong. Please try again.');
   }
 
+  /* PW1 — el código de Firebase de un cambio de contraseña → uno corto que la
+     pantalla sabe leer. «wrong-password» es SOLO la contraseña ACTUAL mal escrita. */
+  function pwCode(r) {
+    var c = String((r && r.code) || '');
+    if (c.indexOf('wrong-password') >= 0 || c.indexOf('invalid-credential') >= 0 || c.indexOf('invalid-login-credentials') >= 0) return 'wrong-password';
+    if (c.indexOf('weak-password') >= 0) return 'weak-password';
+    if (c.indexOf('network') >= 0) return 'network';
+    if (c.indexOf('too-many-requests') >= 0) return 'too-many-requests';
+    if (c.indexOf('requires-recent-login') >= 0) return 'requires-recent-login';
+    if (c.indexOf('no-current-user') >= 0 || c.indexOf('user-not-found') >= 0 || c.indexOf('user-token-expired') >= 0 || c.indexOf('user-disabled') >= 0) return 'no-current-user';
+    return 'error';
+  }
+  function pwMsg(code) {
+    if (code === 'wrong-password') return T('pw_err_current', 'Your current password isn’t right.');
+    if (code === 'same-password') return T('pw_err_same', 'The new password has to be different from the current one.');
+    if (code === 'no-password') return T('pw_err_social', 'This account signs in with Apple or Google, so it has no password.');
+    if (code === 'weak-password' || code === 'network' || code === 'too-many-requests') return errMsg(code);
+    return errMsg('');
+  }
+  var pwBusy = false;                                  /* PW1: un cambio de contraseña a la vez */
+
   /* ---- sesión (replica lo que hacía el auth simulado) ----------------- */
   var CF_ONB_KEY = 'cf_onboarded_v1', CF_FRESH_KEY = 'cf_fresh_v1';
   function onbDone() { try { return localStorage.getItem(CF_ONB_KEY) === '1'; } catch (e) { return false; } }
@@ -216,6 +237,51 @@
       if (!available()) return false;
       try { FB().sendPasswordReset(email); } catch (e) {}
       return true;
+    },
+
+    /* ---- PW1 (22 oct 2026, Historial CF [3473]): ¿la cuenta tiene contraseña?
+       true / false según los proveedores de Firebase; null si no hay sesión o no
+       se sabe. Una cuenta que solo entra con Apple o Google da false: la pantalla
+       no le ofrece «Cambiar contraseña». ---- */
+    hasPassword: function () {
+      try {
+        var u = available() && FB().currentUser();
+        if (!u) return null;
+        return (u.providerData || []).some(function (p) { return !!(p && p.providerId === 'password'); });
+      } catch (e) { return null; }
+    },
+
+    /* ---- PW1: CAMBIAR LA CONTRASEÑA DE VERDAD. Hasta hoy la pantalla de Ajustes
+       solo guardaba la nueva en el espejo local (cfSetCred): Firebase seguía con la
+       vieja y, en otro móvil o al reinstalar, la nueva NO servía. Aquí se cambia en
+       Firebase: reautenticar con la ACTUAL → updatePassword(nueva), en ese orden.
+       SIEMPRE resuelve {ok:true} | {ok:false, code, message}; nunca rechaza.
+       code: wrong-password (la actual) · weak-password · same-password ·
+       no-password (cuenta solo de Apple/Google) · network · too-many-requests ·
+       no-current-user · busy · error. NO toca el espejo local: lo pone al día la
+       pantalla tras ok:true. ---- */
+    changePassword: function (o) {
+      var cur = String((o && o.current) || ''), next = String((o && o.next) || '');
+      var no = function (code) { return Promise.resolve({ ok: false, code: code, message: pwMsg(code) }); };
+      if (pwBusy) return no('busy');
+      if (!available()) return no('network');
+      var u = null;
+      try { u = FB().currentUser(); } catch (e) { u = null; }
+      if (!u || !u.email) return no('no-current-user');
+      if (this.hasPassword() === false) return no('no-password');
+      if (!cur) return no('wrong-password');
+      if (next.length < 6) return no('weak-password');
+      if (next === cur) return no('same-password');
+      pwBusy = true;
+      var end = function (r) { pwBusy = false; return r; };
+      var bad = function (r) { var c = pwCode(r); return { ok: false, code: c, message: pwMsg(c) }; };
+      return Promise.resolve().then(function () { return FB().reauthenticate(cur); })
+        .then(function (r) {
+          if (!r || !r.ok) return bad(r);
+          return Promise.resolve(FB().updatePassword(next)).then(function (r2) { return (r2 && r2.ok) ? { ok: true } : bad(r2); });
+        })
+        .catch(bad)
+        .then(end);
     },
 
     /* ---- REGISTRO: crea la cuenta, manda el enlace y abre el overlay --- */
