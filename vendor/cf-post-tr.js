@@ -133,5 +133,8 @@
   if (!window.CFPostTr && typeof window.addEventListener === 'function') {
     window.addEventListener('DOMContentLoaded', montar);
     window.addEventListener('load', montar);
+    /* BOOT2 (22 oct 2026): la repesca del nativo (native/App.js, BOOT2_REPESCA) avisa con este
+       evento cuando las marcas llegan DESPUÉS de cargar. montar() no hace nada si ya está montado. */
+    window.addEventListener('cf-native-ready', montar);
   }
 })();

@@ -264,13 +264,21 @@
       try { u = window.CFFirebase.currentUser(); } catch (e) {}
       var p = socialOnly(u);
       if (!p || available[p] !== true) return plainDelete.apply(self, args);
-      var failed = function () { toast(T('fb_del_err', 'We could not delete your account. Please try again.'), 'error'); };
+      var failed = function (ref) { toast(T('fb_del_err', 'We could not delete your account. Please try again.') + (ref ? ' (ref ' + ref + ')' : ''), 'error'); };
       obtain(p, 'reauth').then(function (got) {
-        if (!got.ok) { if (got.code === 'cancelled') toast(T('fb_del_cancel', 'Account deletion cancelled.')); else failed(); return; }
+        if (!got.ok) { if (got.code === 'cancelled') toast(T('fb_del_cancel', 'Account deletion cancelled.')); else failed('obtain-' + got.code); return; }
         return u.reauthenticateWithCredential(got.cred)
+          .then(null, function (e) {
+            /* DEL2 (26 oct 2026, Historial CF [3716]-[3718]): si lo dice FIREBASE (código «auth/…», p. ej. otra
+               cuenta), no se borra. Si falla el MÓVIL —el WKWebView del iPhone pierde IndexedDB al volver de
+               segundo plano y el SDK no puede guardar la sesión—, el servidor ya confirmó y la sesión en
+               memoria es reciente: se sigue con el borrado. */
+            if (e && typeof e.code === 'string' && e.code.indexOf('auth/') === 0) throw e;
+            log('confirmar: falló el almacén del móvil (' + ((e && (e.name || e.message)) || e) + ') — sigo con el borrado');
+          })
           .then(function () { return p === 'apple' ? revokeApple(u, got.authCode) : null; })
-          .then(function () { plainDelete.apply(self, args); });   /* sesión recién confirmada: borra sin pedir contraseña */
-      }).catch(failed);
+          .then(function () { plainDelete.call(self, { social: true }); });   /* sesión recién confirmada: borra sin pedir contraseña */
+      }).catch(function (e) { failed('reauth-' + String((e && e.code) || 'js').replace(/^auth\//, '').slice(0, 40)); });
     };
     wire.__cfSocialDelete = true;
   }

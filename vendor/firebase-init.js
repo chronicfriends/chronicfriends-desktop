@@ -39,6 +39,35 @@
     return { ok: false, code: (e && e.code) || 'unknown', message: (e && e.message) || String(e), error: e };
   }
 
+  /* DEL2 (26 oct 2026, Historial CF [3716]-[3718]) — ¿el fallo lo dio FIREBASE (código «auth/…»:
+     sesión vieja, contraseña mal, sin red) o el MÓVIL? En el iPhone, al volver de segundo plano, el
+     WKWebView pierde la conexión con IndexedDB («Connection to Indexed Database server lost») y el
+     SDK falla al GUARDAR la sesión DESPUÉS de que el servidor ya hizo su parte. Reproducido con el
+     emulador de Auth: auditorias/login1-borrado-google-20261026/. */
+  function esDeAuth(e) { return !!(e && typeof e.code === 'string' && e.code.indexOf('auth/') === 0); }
+
+  /* DEL2 — borrar por REST (accounts:delete) con el token que el SDK tiene en MEMORIA, sin tocar su
+     almacén. Si el servidor contesta que la cuenta ya no existe, es que el SDK llegó a borrarla y
+     falló después (al cerrar la sesión en IndexedDB). */
+  function borrarPorRest(u, original) {
+    var em = null; try { em = auth.emulatorConfig; } catch (e) {}
+    var base = em && em.host
+      ? (em.protocol || 'http') + '://' + em.host + (em.port ? ':' + em.port : '') + '/identitytoolkit.googleapis.com/v1/'
+      : 'https://identitytoolkit.googleapis.com/v1/';
+    return Promise.resolve().then(function () { return u.getIdToken(); }).then(function (tok) {
+      return fetch(base + 'accounts:delete?key=' + encodeURIComponent(firebaseConfig.apiKey), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: tok })
+      });
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        var m = String((j && j.error && j.error.message) || '');
+        if (r.ok || m.indexOf('USER_NOT_FOUND') === 0) return ok({ via: 'rest' });
+        if (m.indexOf('CREDENTIAL_TOO_OLD_LOGIN_AGAIN') === 0) return { ok: false, code: 'auth/requires-recent-login', message: m };
+        return { ok: false, code: 'rest/' + (m || ('http-' + r.status)), message: m, error: original };
+      });
+    }).catch(function (e) { return fail(esDeAuth(e) ? e : (original || e)); });
+  }
+
   /* Si el SDK no está (fallo de carga), dejamos un stub inerte: todo método
      resuelve a un fallo controlado y available=false. Nada explota. */
   if (typeof window.firebase === 'undefined' || !window.firebase.initializeApp) {
@@ -184,7 +213,11 @@
     deleteAccount: function () {
       var u = auth.currentUser;
       if (!u) return Promise.resolve({ ok: false, code: 'no-current-user' });
-      return u.delete().then(function () { return ok(); }).catch(fail);
+      return u.delete().then(function () { return ok(); }).catch(function (e) {
+        if (esDeAuth(e)) return fail(e);              /* lo dijo Firebase (sesión vieja, sin red…): como siempre */
+        try { console.warn('[CFFirebase] borrar: el SDK falló en el móvil (' + ((e && (e.name || e.message)) || e) + ') — lo termino por REST'); } catch (_) {}
+        return borrarPorRest(u, e);                   /* DEL2: falló el almacén del móvil, no Firebase */
+      });
     },
 
     /* reautenticación reciente (email + contraseña). Firebase la exige antes de

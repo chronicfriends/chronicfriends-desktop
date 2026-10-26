@@ -349,7 +349,10 @@
        pedimos la contraseña, reautenticamos y REINTENTAMOS el borrado en la nube,
        para no dejar una cuenta "fantasma" en Firebase. Si el usuario cancela o
        la contraseña falla, NO borramos nada (la cuenta queda intacta) y avisamos. */
-    deleteAccountFull: function () {
+    deleteAccountFull: function (opts) {
+      /* DEL2 (26 oct 2026): {social:true} = viene de cf-social-auth, ya confirmado con Apple o Google;
+         esa cuenta no tiene contraseña que pedir si Firebase volviera a exigir un inicio reciente. */
+      var social = !!(opts && opts.social);
       var done = false;
       var wipeAndReload = function () {                /* solo tras confirmar el borrado en la nube (o sin Firebase) */
         if (done) return; done = true;                /* idempotente: nunca borra/recarga dos veces */
@@ -357,7 +360,12 @@
         try { window.CFAuth && CFAuth.logout(); } catch (e) {}
         location.reload();
       };
-      var failMsg = function () { toast(T('fb_del_err', 'We could not delete your account. Please try again.'), 'error'); };
+      /* DEL2: el aviso lleva una referencia corta del paso que falló (p. ej. «(ref delete-unknown)»):
+         la consola del WKWebView no llega a la Pi y sin ella el fallo del 26 oct no se podía leer. */
+      var failMsg = function (ref) {
+        toast(T('fb_del_err', 'We could not delete your account. Please try again.') + (ref ? ' (ref ' + ref + ')' : ''), 'error');
+      };
+      var refDe = function (r) { return String((r && r.code) || 'x').replace(/^auth\//, '').slice(0, 40); };
 
       /* Art. 17 · derecho de supresión (3 sep 2026). ANTES de borrar el usuario
          de Firebase Auth hay que borrar lo que publicó a otros y lo que solo él
@@ -408,20 +416,29 @@
         catch (e) { pw = null; }
         if (pw == null) { toast(T('fb_del_cancel', 'Account deletion cancelled.')); return; }  /* cancelado: no borra nada */
         FB().reauthenticate(pw).then(function (r) {
-          if (!(r && r.ok)) { toast(T('fb_del_badpw', 'Wrong password — your account was not deleted.'), 'error'); return; }
+          if (!(r && r.ok)) {
+            var c = String((r && r.code) || '');
+            /* DEL2: un código «auth/…» es Firebase diciendo que no (contraseña mal…) → no se borra. Sin él,
+               lo que falló fue el almacén del móvil DESPUÉS de que Firebase aceptara la contraseña: la sesión
+               en memoria ya es reciente y se sigue (si no lo fuera, el borrado lo dirá con su propio código). */
+            if (c.indexOf('auth/') === 0 || c === 'no-current-user') { toast(T('fb_del_badpw', 'Wrong password — your account was not deleted.'), 'error'); return; }
+          }
           purgeCloudFootprint().then(function () { return FB().deleteAccount(); }).then(function (r2) {
-            if (r2 && r2.ok) { wipeAndReload(); } else { failMsg(); }
-          }).catch(failMsg);
-        }).catch(failMsg);
+            if (r2 && r2.ok) { wipeAndReload(); } else { failMsg('delete-' + refDe(r2)); }
+          }).catch(function () { failMsg('js'); });
+        }).catch(function () { failMsg('js'); });
       };
 
       try {
         if (available() && FB().currentUser()) {
           purgeCloudFootprint().then(function () { return FB().deleteAccount(); }).then(function (r) {
             if (r && r.ok) { wipeAndReload(); return; }
-            if (r && String(r.code).indexOf('requires-recent-login') >= 0) { reauthAndDelete(); return; }
-            failMsg();                                 /* otro error (red/servidor): NO borres local, deja reintentar */
-          }).catch(failMsg);
+            if (r && String(r.code).indexOf('requires-recent-login') >= 0) {
+              if (social) { failMsg('reauth-social'); return; }   /* DEL2: Apple/Google no tienen contraseña que pedir */
+              reauthAndDelete(); return;
+            }
+            failMsg('delete-' + refDe(r));             /* otro error (red/servidor): NO borres local, deja reintentar */
+          }).catch(function () { failMsg('js'); });
           return;
         }
       } catch (e) {}
