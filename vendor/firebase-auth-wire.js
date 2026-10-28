@@ -275,10 +275,39 @@
       pwBusy = true;
       var end = function (r) { pwBusy = false; return r; };
       var bad = function (r) { var c = pwCode(r); return { ok: false, code: c, message: pwMsg(c) }; };
+      /* PW1 bajo DEL2 (26 oct 2026, Historial CF [3718] [3726]): en el iPhone, al volver de segundo plano, el
+         WKWebView pierde IndexedDB y el SDK falla al GUARDAR la sesión DESPUÉS de que el servidor ya hizo su
+         parte (medido con el emulador: auditorias/login1-borrado-google-20261026/arnes-emulador/experimento-pw1.mjs).
+         Un fallo SIN código «auth/…» es ese almacén, no Firebase diciendo que no. */
+      var esMovil = function (r) {
+        var c = String((r && r.code) || '');
+        return !!r && !r.ok && c.indexOf('auth/') !== 0 && c !== 'no-current-user' && c !== 'sdk-missing';
+      };
+      /* la sesión nueva del SDK (en memoria) al espejo de SEC22: si el móvil reinicia, su rescate la recupera
+         (la de IndexedDB se queda vieja, y el servidor la invalida al cambiar la contraseña) */
+      var espejo = function () {
+        try {
+          var g = window.CFSessionGuard, uu = FB().currentUser();
+          if (g && g.mirrorKey && uu && typeof uu.toJSON === 'function') localStorage.setItem(g.mirrorKey, JSON.stringify(uu.toJSON()));
+        } catch (e) {}
+      };
+      var cambiar = function () {
+        return Promise.resolve(FB().updatePassword(next)).then(function (r2) {
+          if (r2 && r2.ok) return { ok: true };
+          if (!esMovil(r2) || typeof FB().checkPassword !== 'function') return bad(r2);
+          /* ¿la cambió el servidor antes de que fallara el almacén? Se mira entrando con la NUEVA por REST */
+          return Promise.resolve(FB().checkPassword(u.email, next)).then(function (c) {
+            if (!(c && c.ok)) return bad(r2);
+            espejo();
+            return { ok: true };
+          });
+        });
+      };
       return Promise.resolve().then(function () { return FB().reauthenticate(cur); })
         .then(function (r) {
-          if (!r || !r.ok) return bad(r);
-          return Promise.resolve(FB().updatePassword(next)).then(function (r2) { return (r2 && r2.ok) ? { ok: true } : bad(r2); });
+          if (r && r.ok) return cambiar();
+          if (esMovil(r)) return cambiar();             /* Firebase aceptó la actual: el fallo llegó después, al guardar */
+          return bad(r);
         })
         .catch(bad)
         .then(end);

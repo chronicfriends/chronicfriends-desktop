@@ -49,13 +49,16 @@
   /* DEL2 — borrar por REST (accounts:delete) con el token que el SDK tiene en MEMORIA, sin tocar su
      almacén. Si el servidor contesta que la cuenta ya no existe, es que el SDK llegó a borrarla y
      falló después (al cerrar la sesión en IndexedDB). */
-  function borrarPorRest(u, original) {
+  function idtUrl(metodo) {                     /* REST de Auth (con el emulador, si lo hay: pruebas) */
     var em = null; try { em = auth.emulatorConfig; } catch (e) {}
     var base = em && em.host
       ? (em.protocol || 'http') + '://' + em.host + (em.port ? ':' + em.port : '') + '/identitytoolkit.googleapis.com/v1/'
       : 'https://identitytoolkit.googleapis.com/v1/';
+    return base + metodo + '?key=' + encodeURIComponent(firebaseConfig.apiKey);
+  }
+  function borrarPorRest(u, original) {
     return Promise.resolve().then(function () { return u.getIdToken(); }).then(function (tok) {
-      return fetch(base + 'accounts:delete?key=' + encodeURIComponent(firebaseConfig.apiKey), {
+      return fetch(idtUrl('accounts:delete'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken: tok })
       });
     }).then(function (r) {
@@ -66,6 +69,22 @@
         return { ok: false, code: 'rest/' + (m || ('http-' + r.status)), message: m, error: original };
       });
     }).catch(function (e) { return fail(esDeAuth(e) ? e : (original || e)); });
+  }
+
+  /* PW1 bajo DEL2 (26 oct 2026) — ¿entra esta contraseña en esta cuenta? Por REST (accounts:signInWithPassword),
+     sin tocar la sesión del SDK ni su almacén: sirve para saber si el servidor ya cambió la contraseña cuando el
+     SDK falló DESPUÉS, al guardar la sesión en el IndexedDB perdido del iPhone. */
+  function comprobarClaveRest(email, pw) {
+    return fetch(idtUrl('accounts:signInWithPassword'), {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: String(email || '').trim(), password: String(pw || ''), returnSecureToken: true })
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.ok) return ok();
+        var m = String((j && j.error && j.error.message) || ('http-' + r.status));
+        return { ok: false, code: 'rest/' + m, message: m };
+      });
+    }).catch(function (e) { return { ok: false, code: 'auth/network-request-failed', message: String((e && e.message) || e) }; });
   }
 
   /* Si el SDK no está (fallo de carga), dejamos un stub inerte: todo método
@@ -84,6 +103,7 @@
       deleteAccount: function () { return Promise.resolve({ ok: false, code: 'sdk-missing' }); },
       reauthenticate: function () { return Promise.resolve({ ok: false, code: 'sdk-missing' }); },
       updatePassword: function () { return Promise.resolve({ ok: false, code: 'sdk-missing' }); },
+      checkPassword: function () { return Promise.resolve({ ok: false, code: 'sdk-missing' }); },
       refreshToken: function () { return Promise.resolve({ ok: false, code: 'sdk-missing' }); },
       sendPasswordReset: function () { return Promise.resolve({ ok: false, code: 'sdk-missing' }); },
       currentUser: function () { return null; },
@@ -243,6 +263,9 @@
         return u.updatePassword(String(pw || '')).then(function () { return ok(); }).catch(fail);
       } catch (e) { return Promise.resolve(fail(e)); }
     },
+
+    /* PW1 bajo DEL2 — ¿esta contraseña entra en la cuenta? (REST, sin tocar la sesión). {ok:true} | {ok:false, code} */
+    checkPassword: function (email, pw) { return comprobarClaveRest(email, pw); },
 
     /* fuerza refrescar el ID token para que sus claims (p.ej. email_verified)
        estén al día. Firestore evalúa las reglas con este token: tras verificar
