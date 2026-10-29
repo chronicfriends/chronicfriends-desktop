@@ -750,9 +750,9 @@ function cfManualPatient() {
 
       ...(hasPhotos ? [{ title: tr('Post with a photo'),
         where: [tr('Community'), tr('Posts')],
-        body: tr('In <strong>Create post</strong>, <strong>Add to your post</strong> lets you add a photo from your phone — or tap the photo icon beside <strong>What would you like to share?</strong> and your phone’s picker opens at once. The photo appears under your text, edge to edge, as it will look on the wall; its ✕ takes it away. A single photo per post, and a photo alone is enough to publish.'),
+        body: tr('In <strong>Create post</strong>, <strong>Add to your post</strong> lets you add a photo from your device — or tap the photo icon beside <strong>What would you like to share?</strong> and the photo picker opens at once. The photo appears under your text, edge to edge, as it will look on the wall; its ✕ takes it away. A single photo per post, and a photo alone is enough to publish.'),
         problem: tr('Some days a picture says it better than a paragraph — a walk, a plate, the view from your window.'),
-        tip: tr('Before it leaves your phone, the photo is made smaller and its location is removed, so nobody can tell where it was taken. If it cannot be uploaded, nothing is published: your text and your photo stay on the screen so you can try again.') }] : []),
+        tip: tr('Before it is uploaded, the photo is made smaller and its location is removed, so nobody can tell where it was taken. If it cannot be uploaded, nothing is published: your text and your photo stay on the screen so you can try again.') }] : []),
 
       ...(hasOfficial ? [{ title: tr('Posts from Chronic Friends'),
         where: [tr('Community'), tr('Posts')],
