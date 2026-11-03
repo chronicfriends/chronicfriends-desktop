@@ -1,9 +1,9 @@
 {
   "web": {
-    "version": "2026-10-30-2310",
-    "file": "webapp-2026-10-30-2310.zip",
-    "size": 12681574,
-    "md5": "0a7d4e56ec0d89576b319cfc99d9cbce",
+    "version": "2026-11-02-1125",
+    "file": "webapp-2026-11-02-1125.zip",
+    "size": 12688519,
+    "md5": "d985bbec1f56a07b82179a59fbd2823e",
     "minNative": "1.0.8"
   },
   "native": {
@@ -14,5 +14,5 @@
       "latest": "1.0.9"
     }
   },
-  "published": "2026-10-31 12:46"
+  "published": "2026-11-03 18:58"
 }
