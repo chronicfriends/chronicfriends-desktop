@@ -264,9 +264,18 @@
       try { u = window.CFFirebase.currentUser(); } catch (e) {}
       var p = socialOnly(u);
       if (!p || available[p] !== true) return plainDelete.apply(self, args);
-      var failed = function (ref) { toast(T('fb_del_err', 'We could not delete your account. Please try again.') + (ref ? ' (ref ' + ref + ')' : ''), 'error'); };
+      var failed = function (ref) {
+        toast(T('fb_del_err', 'We could not delete your account. Please try again.') + (ref ? ' (ref ' + ref + ')' : ''), 'error');
+        try { window.dispatchEvent(new CustomEvent('cf-delete-failed', { detail: { ref: ref || '' } })); } catch (e) {}   /* DEL3 */
+      };
       obtain(p, 'reauth').then(function (got) {
-        if (!got.ok) { if (got.code === 'cancelled') toast(T('fb_del_cancel', 'Account deletion cancelled.')); else failed('obtain-' + got.code); return; }
+        if (!got.ok) {
+          if (got.code === 'cancelled') {
+            toast(T('fb_del_cancel', 'Account deletion cancelled.'));
+            try { window.dispatchEvent(new Event('cf-delete-cancelled')); } catch (e) {}   /* DEL3: la tarjeta de Ajustes vuelve a su sitio */
+          } else failed('obtain-' + got.code);
+          return;
+        }
         return u.reauthenticateWithCredential(got.cred)
           .then(null, function (e) {
             /* DEL2 (26 oct 2026, Historial CF [3716]-[3718]): si lo dice FIREBASE (código «auth/…», p. ej. otra

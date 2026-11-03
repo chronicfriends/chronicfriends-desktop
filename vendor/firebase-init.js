@@ -347,5 +347,81 @@
     window.CFLangNube = { sincronizar: sincronizar, idiomaApp: idiomaApp };
   })();
 
+  /* 📧 EML4 (2 nov 2026) — EL INTERRUPTOR «Emails about the app» DE AJUSTES: window.CFMailPrefs.
+     Claude Design dibuja la fila desde el export 1.0.8b (design/feedback.jsx §17, RowMailPrefs) y su
+     entrada del manual SOLO si existe este motor, y la Política de Privacidad ya la promete («Settings ›
+     Emails about the app»): faltaba el motor (lo destapó el repaso del RoadMap del 30 oct, Historial CF
+     [3964]). El estado vive en users/{uid}/private/mail.unsub — el MISMO campo que pone el enlace de
+     baja de cada correo (functions/mail-seq.js · bajaCorreos) y que el motor mira antes de mandar nada
+     (unsub:true = ningún correo más). La app escribe SOLO { unsub, unsubAt | resubAt }: firestore.rules
+     no deja tocar nada más de ese documento, que es del motor.
+     · get() es SÍNCRONO (la fila lo pide al pintarse): lo último que se sabe de ESTA cuenta (la marca
+       local, por uid) y, sin nada, true: correos encendidos con baja en un clic, como dice la Política.
+     · set(on) lo guarda ya en el móvil, avisa con 'cf-mail-prefs' (la fila se repinta) y lo sube; sin
+       red, sin sesión o con el correo sin verificar (las reglas lo exigen) queda PENDIENTE y se sube al
+       volver la sesión o la app. Lo pendiente manda sobre lo leído de la nube: es lo último que dijo.
+     · Lee la nube al tener sesión y al volver a la app (otro móvil pudo cambiarlo, o el enlace del pie). */
+  (function () {
+    var LS = 'cf_mail_on_v1';                         /* { "<uid>": bool (lo sabido), "p:<uid>": bool (pendiente de subir) } */
+    var subiendo = false;
+    function leer() { try { var o = JSON.parse(localStorage.getItem(LS)); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } }
+    function guardar(o) { try { localStorage.setItem(LS, JSON.stringify(o)); } catch (e) {} }
+    function avisar() { try { window.dispatchEvent(new Event('cf-mail-prefs')); } catch (e) {} }
+    function get() {
+      var u = auth.currentUser;
+      if (!u) return true;
+      var m = leer();
+      if (typeof m['p:' + u.uid] === 'boolean') return m['p:' + u.uid];
+      if (typeof m[u.uid] === 'boolean') return m[u.uid];
+      return true;
+    }
+    function subir() {
+      var u = auth.currentUser, store = window.CFStore;
+      if (subiendo || !u || !u.emailVerified || !store || !store.available || typeof store.set !== 'function') return Promise.resolve({ ok: false, code: 'pendiente' });
+      var m = leer(), on = m['p:' + u.uid];
+      if (typeof on !== 'boolean') return Promise.resolve({ ok: true });
+      var uid = u.uid, doc = { unsub: !on };
+      doc[on ? 'resubAt' : 'unsubAt'] = Date.now();
+      subiendo = true;
+      return Promise.resolve(store.set('users/' + uid + '/private/mail', doc)).then(function (r) {
+        subiendo = false;
+        if (!(r && r.ok)) return { ok: false, code: (r && r.code) || 'error' };
+        var m2 = leer();
+        m2[uid] = on;
+        if (m2['p:' + uid] === on) delete m2['p:' + uid];   /* si cambió otra vez mientras subía, se queda pendiente */
+        guardar(m2);
+        return { ok: true };
+      }, function () { subiendo = false; return { ok: false, code: 'error' }; });
+    }
+    function set(on) {
+      var u = auth.currentUser;
+      if (!u) return Promise.resolve({ ok: false, code: 'no-current-user' });
+      on = !!on;
+      var m = leer();
+      m['p:' + u.uid] = on;
+      guardar(m);
+      avisar();
+      return subir();
+    }
+    function refrescar() {
+      var u = auth.currentUser, store = window.CFStore;
+      if (!u || !u.emailVerified || !store || !store.available || typeof store.get !== 'function') return;
+      var uid = u.uid;
+      if (typeof leer()['p:' + uid] === 'boolean') { subir(); return; }
+      var leido;
+      try { leido = store.get('users/' + uid + '/private/mail'); } catch (e) { return; }
+      Promise.resolve(leido).then(function (d) {
+        var u2 = auth.currentUser;
+        if (!u2 || u2.uid !== uid || typeof leer()['p:' + uid] === 'boolean') return;
+        var on = !(d && d.unsub === true);
+        var m = leer();
+        if (m[uid] !== on) { m[uid] = on; guardar(m); avisar(); }
+      }).catch(function () {});
+    }
+    try { window.addEventListener('cf-auth-changed', function () { avisar(); setTimeout(refrescar, 1500); }); } catch (e) {}
+    try { document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') refrescar(); }); } catch (e) {}
+    window.CFMailPrefs = { get: get, set: set, refresh: refrescar };
+  })();
+
   try { console.log('[CFFirebase] listo · proyecto', firebaseConfig.projectId, '· available=true'); } catch (e) {}
 })();

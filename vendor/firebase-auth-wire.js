@@ -227,6 +227,121 @@
     if (setSu) setSu('form');
   }
 
+  /* ---- DEL3 (2 nov 2026) — HOJA PROPIA para la contraseña al borrar la cuenta ----------
+     Antes era window.prompt, el único de la app. En el móvil lo dibuja react-native-webview
+     SIN campo oculto (RNCWebViewImpl.m:1250: las letras a la vista) y con solo Aceptar/Cancelar:
+     quien no recordaba la contraseña no tenía salida (Gerhard en el iPhone, 31 oct, Historial
+     CF [3991]; Apple 5.1.1(v) y RGPD art. 17). Ahora: campo OCULTO con el ojo de ver/ocultar, el
+     error se queda en la hoja para volver a probar, y «¿Olvidaste la contraseña?» manda el correo
+     de Firebase para crear una nueva; la hoja sigue abierta para escribirla al volver.
+     Mismas clases que el login (.fld .pw-wrap .pw-toggle) y mismo marco que «Revisa tu correo».
+     o = { email, submit(pw) → Promise<{ok:true} | {ok:false, msg}>, forgot() → Promise<igual>,
+           onDone(), onCancel() }. Un «Cancelar» a mitad de camino gana: lo que llegue después se ignora. */
+  var EYE = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+  var EYE_OFF = EYE.replace('</svg>', '<path d="M4 4l16 16"/></svg>');
+  var RESEND_MS = 30000;                               /* un correo de «contraseña nueva» cada 30 s como mucho */
+  var _ps = null, _psCtl = null;
+  function _psBuild() {
+    if (_ps) return;
+    _ps = document.createElement('div');
+    _ps.setAttribute('data-cf', 'del-pw');
+    _ps.style.cssText = 'position:fixed;inset:0;z-index:99990;display:none;align-items:center;justify-content:center;'
+      + 'background:rgba(15,35,15,.62);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);padding:22px;font-family:inherit';
+    var card = document.createElement('div');
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-modal', 'true');
+    card.style.cssText = 'background:var(--card,#fff);border-radius:24px;padding:26px 22px 22px;max-width:340px;width:100%;'
+      + 'text-align:center;box-shadow:0 24px 60px -18px rgba(5,20,5,.6);max-height:100%;overflow-y:auto';
+    var link = 'background:none;border:none;cursor:pointer;font-family:inherit;font-size:12.5px;font-weight:700;padding:4px 0;';
+    card.innerHTML =
+      '<div style="width:60px;height:60px;border-radius:20px;margin:2px auto 14px;display:flex;align-items:center;justify-content:center;'
+      + 'color:#fff;background:radial-gradient(120% 120% at 30% 25%,#e8707a,#bf3f4c);box-shadow:0 12px 24px -8px rgba(150,40,50,.5)">'
+      + '<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+      + '<rect x="4" y="11" width="16" height="10" rx="2.5"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>'
+      + '<div data-cf="title" style="font-size:18px;font-weight:800;color:var(--ink,#14321a)"></div>'
+      + '<div data-cf="body" style="font-size:12.5px;font-weight:600;color:var(--muted,#5a6b58);margin-top:6px;line-height:1.5;padding:0 4px"></div>'
+      + '<div data-cf="email" style="font-size:13px;font-weight:800;color:var(--ink,#14321a);margin-top:4px;word-break:break-all"></div>'
+      + '<form data-cf="form" novalidate style="margin:16px 0 0;text-align:start">'
+      + '<div class="fld" style="margin:0"><div class="pw-wrap">'
+      + '<input data-cf="pw" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="••••••••" style="font-size:16.5px">'
+      + '<button data-cf="eye" type="button" class="pw-toggle" aria-pressed="false"></button>'
+      + '</div></div>'
+      + '<div data-cf="err" role="alert" style="display:none;margin-top:10px;padding:10px 12px;border-radius:12px;background:#fcecec;'
+      + 'border:1px solid rgba(190,60,60,.28);color:#a23030;font-size:12px;font-weight:700;line-height:1.4;text-align:center"></div>'
+      + '<div data-cf="sent" role="status" style="display:none;margin-top:10px;padding:10px 12px;border-radius:12px;background:#eaf7ea;'
+      + 'border:1px solid rgba(60,160,80,.3);color:#1f7a3a;font-size:12px;font-weight:700;line-height:1.45;text-align:center"></div>'
+      + '<div style="text-align:center;margin-top:8px"><button data-cf="forgot" type="button" style="' + link + 'font-size:13px;color:var(--green-600,#2a8c43)"></button></div>'
+      + '<button data-cf="go" type="submit" class="btn3d pill" style="width:100%;margin-top:10px;padding:15px;font-size:15.5px;font-weight:700;'
+      + 'background:linear-gradient(180deg,#e8707a,#bf3f4c);box-shadow:0 8px 16px rgba(150,40,50,.4),inset 0 2px 2px rgba(255,255,255,.4)"></button>'
+      + '</form>'
+      + '<div style="text-align:center;margin-top:10px"><button data-cf="cancel" type="button" style="' + link + 'color:var(--muted-2,#8a988a)"></button></div>';
+    _ps.appendChild(card);
+    document.body.appendChild(_ps);
+    var on = function (k, ev, fn) { card.querySelector('[data-cf="' + k + '"]').addEventListener(ev, function (e) { if (_psCtl) _psCtl[fn](e); }); };
+    on('form', 'submit', 'submit');
+    on('eye', 'click', 'eye');
+    on('eye', 'mousedown', 'keepFocus');
+    on('forgot', 'click', 'forgot');
+    on('cancel', 'click', 'cancel');
+    _ps.addEventListener('keydown', function (e) { if (e.key === 'Escape' && _psCtl) _psCtl.cancel(); });
+  }
+  function askPassword(o) {
+    _psBuild();
+    var c = _ps.firstChild, q = function (k) { return c.querySelector('[data-cf="' + k + '"]'); };
+    var pw = q('pw'), eye = q('eye'), err = q('err'), sent = q('sent'), go = q('go'), forgot = q('forgot');
+    var busy = false, gone = false, sentAt = 0;
+    var say = function (el, msg) { el.textContent = msg || ''; el.style.display = msg ? 'block' : 'none'; };
+    var setBusy = function (b) { busy = b; go.disabled = b; pw.disabled = b; go.style.opacity = b ? '.6' : '1'; };
+    var setEye = function () {
+      var vis = pw.type === 'text';
+      eye.innerHTML = vis ? EYE_OFF : EYE;
+      eye.className = 'pw-toggle' + (vis ? ' on' : '');
+      eye.setAttribute('aria-pressed', vis ? 'true' : 'false');
+      eye.setAttribute('aria-label', vis ? T('fb_pw_hide', 'Hide password') : T('fb_pw_show', 'Show password'));
+    };
+    var close = function () { gone = true; _psCtl = null; pw.value = ''; pw.type = 'password'; _ps.style.display = 'none'; };
+    q('title').textContent = T('fb_del_pw_title', 'Confirm it’s you');
+    q('body').textContent = T('fb_del_reauth', 'Confirm your password to permanently delete your account:');
+    q('email').textContent = o.email || '';
+    go.textContent = T('fb_del_pw_go', 'Delete my account');
+    forgot.textContent = T('fb_del_pw_forgot', 'Forgot password?');
+    q('cancel').textContent = T('fb_del_pw_cancel', 'Cancel');
+    pw.value = ''; pw.type = 'password';
+    setEye(); setBusy(false); say(err, ''); say(sent, '');
+    _psCtl = {
+      keepFocus: function (e) { e.preventDefault(); },
+      eye: function () { pw.type = pw.type === 'text' ? 'password' : 'text'; setEye(); try { pw.focus(); } catch (e) {} },
+      submit: function (e) {
+        if (e) e.preventDefault();
+        if (busy) return;
+        var v = pw.value;
+        if (!v) { try { pw.focus(); } catch (x) {} return; }
+        setBusy(true); say(err, '');
+        Promise.resolve().then(function () { return o.submit(v); }).then(function (r) {
+          if (gone) return;
+          if (r && r.ok) { close(); o.onDone(); return; }
+          setBusy(false); say(err, (r && r.msg) || errMsg('')); try { pw.focus(); } catch (x) {}
+        }, function () { if (!gone) { setBusy(false); say(err, errMsg('')); } });
+      },
+      forgot: function () {
+        if (busy) return;
+        say(err, '');
+        if (Date.now() - sentAt < RESEND_MS) { say(sent, T('fb_del_pw_sent', 'We’ve sent you an email to create a new password. Create it, come back here and type the new one.')); return; }
+        sentAt = Date.now();
+        Promise.resolve().then(function () { return o.forgot(); }).then(function (r) {
+          if (gone) return;
+          if (r && r.ok) {
+            say(sent, T('fb_del_pw_sent', 'We’ve sent you an email to create a new password. Create it, come back here and type the new one.'));
+            forgot.textContent = T('fb_ov_resend', 'Resend email');
+          } else { sentAt = 0; say(sent, ''); say(err, (r && r.msg) || errMsg('')); }
+        }, function () { if (!gone) { sentAt = 0; say(err, errMsg('')); } });
+      },
+      cancel: function () { if (gone) return; close(); o.onCancel(); }
+    };
+    _ps.style.display = 'flex';
+    try { pw.focus(); } catch (e) {}
+  }
+
   var CFAuthFB = {
     available: available,
 
@@ -391,8 +506,12 @@
       };
       /* DEL2: el aviso lleva una referencia corta del paso que falló (p. ej. «(ref delete-unknown)»):
          la consola del WKWebView no llega a la Pi y sin ella el fallo del 26 oct no se podía leer. */
+      /* DEL3 (2 nov 2026): cada final SIN borrado avisa a la pantalla con un evento, para que la tarjeta de
+         Ajustes («Deleting your account and signing you out…») vuelva a su estado normal en vez de quedarse
+         ahí: 'cf-delete-cancelled' (la persona lo canceló) y 'cf-delete-failed' (detail.ref = el paso que falló). */
       var failMsg = function (ref) {
         toast(T('fb_del_err', 'We could not delete your account. Please try again.') + (ref ? ' (ref ' + ref + ')' : ''), 'error');
+        try { window.dispatchEvent(new CustomEvent('cf-delete-failed', { detail: { ref: ref || '' } })); } catch (e) {}
       };
       var refDe = function (r) { return String((r && r.code) || 'x').replace(/^auth\//, '').slice(0, 40); };
 
@@ -438,24 +557,59 @@
         });
       };
 
-      /* Firebase exigió login reciente → pedir contraseña, reautenticar y reintentar. */
-      var reauthAndDelete = function () {
-        var pw = null;
-        try { pw = window.prompt(T('fb_del_reauth', 'Confirm your password to permanently delete your account:')); }
-        catch (e) { pw = null; }
-        if (pw == null) { toast(T('fb_del_cancel', 'Account deletion cancelled.')); return; }  /* cancelado: no borra nada */
-        FB().reauthenticate(pw).then(function (r) {
-          if (!(r && r.ok)) {
-            var c = String((r && r.code) || '');
-            /* DEL2: un código «auth/…» es Firebase diciendo que no (contraseña mal…) → no se borra. Sin él,
-               lo que falló fue el almacén del móvil DESPUÉS de que Firebase aceptara la contraseña: la sesión
-               en memoria ya es reciente y se sigue (si no lo fuera, el borrado lo dirá con su propio código). */
-            if (c.indexOf('auth/') === 0 || c === 'no-current-user') { toast(T('fb_del_badpw', 'Wrong password — your account was not deleted.'), 'error'); return; }
+      /* Firebase exigió login reciente → pedir la contraseña (DEL3: en la hoja propia), confirmar y
+         reintentar. Si la sesión de nube ya no está —crear una contraseña nueva la invalida en todos los
+         móviles—, se entra de cero con el correo de la cuenta y esa contraseña: es la misma cuenta. */
+      var badPw = function (code) {
+        var c = String(code || '');
+        if (/wrong-password|invalid-credential|invalid-login-credentials|user-not-found|user-mismatch|invalid-password/.test(c))
+          return T('fb_del_badpw', 'Wrong password — your account was not deleted.');
+        return errMsg(c);                              /* sin red, demasiados intentos… con sus palabras de siempre */
+      };
+      var askAndDelete = function (email) {
+        askPassword({
+          email: email,
+          submit: function (pw) {
+            var enter = function () {
+              return Promise.resolve(FB().signIn(email, pw)).then(function (s) {
+                if (s && s.ok) return { ok: true };
+                return { ok: false, msg: badPw(s && s.code) };
+              });
+            };
+            if (!FB().currentUser()) return enter();
+            return Promise.resolve(FB().reauthenticate(pw)).then(function (r) {
+              if (r && r.ok) return { ok: true };
+              var c = String((r && r.code) || '');
+              if (c === 'no-current-user' || c.indexOf('user-token-expired') >= 0) return enter();
+              /* DEL2: un código «auth/…» es Firebase diciendo que no (contraseña mal…) → no se borra. Sin él,
+                 lo que falló fue el almacén del móvil DESPUÉS de que Firebase aceptara la contraseña: la sesión
+                 en memoria ya es reciente y se sigue (si no lo fuera, el borrado lo dirá con su propio código). */
+              if (c.indexOf('auth/') === 0) return { ok: false, msg: badPw(c) };
+              return { ok: true };
+            });
+          },
+          forgot: function () {
+            return Promise.resolve(FB().sendPasswordReset(email)).then(function (r) {
+              return (r && r.ok) ? { ok: true } : { ok: false, msg: errMsg(r && r.code) };
+            });
+          },
+          onDone: function () {
+            purgeCloudFootprint().then(function () { return FB().deleteAccount(); }).then(function (r2) {
+              if (r2 && r2.ok) { wipeAndReload(); } else { failMsg('delete-' + refDe(r2)); }
+            }).catch(function () { failMsg('js'); });
+          },
+          onCancel: function () {                      /* cancelado: no borra nada */
+            toast(T('fb_del_cancel', 'Account deletion cancelled.'));
+            try { window.dispatchEvent(new Event('cf-delete-cancelled')); } catch (e) {}
           }
-          purgeCloudFootprint().then(function () { return FB().deleteAccount(); }).then(function (r2) {
-            if (r2 && r2.ok) { wipeAndReload(); } else { failMsg('delete-' + refDe(r2)); }
-          }).catch(function () { failMsg('js'); });
-        }).catch(function () { failMsg('js'); });
+        });
+      };
+      /* el correo de la cuenta: el de Firebase y, sin sesión de nube, el de la sesión de la app */
+      var accountEmail = function () {
+        var em = null;
+        try { var u = FB().currentUser(); em = u && u.email; } catch (e) {}
+        if (!em) { try { var a = JSON.parse(localStorage.getItem('cf_auth_v1')); em = a && a.email; } catch (e) {} }
+        return em ? String(em).trim() : null;
       };
 
       try {
@@ -464,11 +618,19 @@
             if (r && r.ok) { wipeAndReload(); return; }
             if (r && String(r.code).indexOf('requires-recent-login') >= 0) {
               if (social) { failMsg('reauth-social'); return; }   /* DEL2: Apple/Google no tienen contraseña que pedir */
-              reauthAndDelete(); return;
+              var em = accountEmail();
+              if (em) { askAndDelete(em); return; }
             }
             failMsg('delete-' + refDe(r));             /* otro error (red/servidor): NO borres local, deja reintentar */
           }).catch(function () { failMsg('js'); });
           return;
+        }
+        /* DEL3: Firebase está pero la sesión de nube se perdió (p. ej. tras crear una contraseña nueva) y en la
+           app sí hay una cuenta → hasta hoy se borraba SOLO el móvil y la cuenta seguía en la nube con sus datos.
+           Ahora se pide la contraseña para entrar y borrarla de verdad. */
+        if (available()) {
+          var local = accountEmail();
+          if (local) { askAndDelete(local); return; }
         }
       } catch (e) {}
       wipeAndReload();                                 /* sin Firebase (offline / cuenta solo local): borra local */

@@ -88,6 +88,30 @@
   function isHealthKey(key) { return HEALTH_SET[baseOf(key)] === true; }
   function docIdFor(key) { return baseOf(key); }   /* la caja es el id del doc */
 
+  /* 🔒 CHAT1 (2 nov 2026) — CADA CUENTA, SOLO LO SUYO, Y SIN SU CORREO EN LA NUBE.
+     El móvil guarda las cajas de cada cuenta con el espacio de esa cuenta: 'cfns:pat:<correo>:cf_x'
+     (Chronic Friends.html, CFNS). Hasta hoy el arranque recorría TODAS las claves del móvil y subía
+     también las de OTRA cuenta usada en ese teléfono a la nube de la que estaba dentro, pisando su
+     caja; y cada caja subía con `key` = la clave entera, o sea con el correo dentro. Barrido de
+     Firestore del 2 nov: 438 cajas con un correo en `key` (61 cuentas) y 61 de ellas de OTRA cuenta
+     (8 cuentas de pruebas de Gerhard, ningún usuario de fuera). Ahora:
+       · solo se sube lo del espacio de la cuenta de dentro (mine);
+       · en la nube va `key` = la caja sola ('cf_x'): el parche CFNS la lleva al espacio de cada cuenta;
+       · al bajar, una caja con el espacio de OTRA cuenta no se aplica y se repone la propia. */
+  function myPrefix() { try { var n = window.CFNS; return (n && n.prefix && n.prefix()) || null; } catch (e) { return null; } }
+  function isNsKey(k) { return String(k || '').indexOf('cfns:') === 0; }
+  function mine(k) {
+    if (!isNsKey(k)) return true;                     /* sin espacio: el parche CFNS la lleva al de esta cuenta */
+    var p = myPrefix();
+    return !p || String(k).indexOf(p) === 0;          /* sin CFNS (bancos de prueba) todo es de la cuenta, como antes */
+  }
+  /* la clave LOCAL de una caja de la nube para la cuenta de dentro */
+  function localKeyOf(d, base) {
+    if (d && d.key && isNsKey(d.key)) return d.key;   /* legado: ya viene con el espacio (y es de esta cuenta) */
+    var p = myPrefix();
+    return p ? p + base : base;
+  }
+
   function CF() { return window.CFFirebase; }
   function ST() { return window.CFStore; }
   function usable() { return !!(ST() && ST().available && CF() && CF().available); }
@@ -171,7 +195,7 @@
 
   /* ---- PUSH: sube una caja de salud a la nube -------------------------- */
   function pushKey(fullKey, isRetry) {
-    if (!active()) return;
+    if (!active() || !mine(fullKey)) return;          /* CHAT1: nunca la caja de otra cuenta del móvil */
     var base = baseOf(fullKey);
     var val = null; try { val = localStorage.getItem(fullKey); } catch (e) {}
     var u = uid();
@@ -188,7 +212,7 @@
         return;
       }
       var ts = now();
-      ST().set(path, { key: fullKey, value: cloudVal, ts: ts, updatedAt: ST().serverTime() }).then(function (r) {
+      ST().set(path, { key: base, value: cloudVal, ts: ts, updatedAt: ST().serverTime() }).then(function (r) {   /* CHAT1: sin el correo */
         /* 🔴 FB22 (26 sep 2026) — se RELEE el diario de sincronización al confirmar.
            Antes se guardaba la copia leída ANTES de subir: si mientras tanto una foto de
            la nube había apuntado otras cajas, esta confirmación las «olvidaba», y la foto
@@ -227,12 +251,12 @@
   try {
     window.localStorage.setItem = function (k, v) {
       var r = origSet.apply(this, arguments);
-      if (!_applying && isHealthKey(k)) { pending[k] = true; scheduleFlush(); }
+      if (!_applying && isHealthKey(k) && mine(k)) { pending[k] = true; scheduleFlush(); }
       return r;
     };
     window.localStorage.removeItem = function (k) {
       var r = origRemove.apply(this, arguments);
-      if (!_applying && isHealthKey(k)) { pending[k] = true; scheduleFlush(); }
+      if (!_applying && isHealthKey(k) && mine(k)) { pending[k] = true; scheduleFlush(); }
       return r;
     };
   } catch (e) { try { console.warn('[CFSync] no pude interceptar localStorage'); } catch (e2) {} }
@@ -268,16 +292,25 @@
         var base = d._id;
         var localTs = meta[base] || 0;
         var cloudTs = d.ts || 0;
+        /* CHAT1: una caja que subió aquí OTRA cuenta de un móvil compartido (su `key` lleva otro
+           espacio) no es de esta persona: no se aplica, y se repone la propia si la hay. */
+        if (d.key && !mine(d.key)) {
+          var propia = localKeyOf(null, base), tengo = null;
+          try { tengo = localStorage.getItem(propia); } catch (e) {}
+          if (tengo != null) { pending[propia] = true; scheduleFlush(); }
+          return;
+        }
         if (cloudTs > localTs && d.key) {
+          var lk = localKeyOf(d, base);
           var incoming = toLocalValue(base, d.value);   /* FB13: URL de foto lista para <img> */
-          var localVal = null; try { localVal = localStorage.getItem(d.key); } catch (e) {}
+          var localVal = null; try { localVal = localStorage.getItem(lk); } catch (e) {}
           if (localVal !== incoming) {
             /* 🔒 FB22 — la marca de la bienvenida solo va HACIA DELANTE. Un móvil nuevo
                escribe un «0» provisional al iniciar sesión (enterReturning) y puede subirlo
                antes de haber visto la nube; ese «0» nunca deshace aquí un «1»: se ignora y
                se vuelve a subir el «1» para curar la nube. */
-            if (base === 'cf_onboarded_v1' && localVal === '1') { pending[d.key] = true; scheduleFlush(); }
-            else applyDown(d.key, incoming);
+            if (base === 'cf_onboarded_v1' && localVal === '1') { pending[lk] = true; scheduleFlush(); }
+            else applyDown(lk, incoming);
           }
           meta[base] = cloudTs; saveMeta(meta);
         }
@@ -288,7 +321,7 @@
     try {
       for (var i = 0; i < localStorage.length; i++) {
         var k = localStorage.key(i);
-        if (k && isHealthKey(k)) { pending[k] = true; }
+        if (k && isHealthKey(k) && mine(k)) { pending[k] = true; }   /* CHAT1: solo lo de esta cuenta */
       }
       scheduleFlush();
     } catch (e) {}
