@@ -4,7 +4,7 @@
      1. Lectura del código de barras del frame capturado (ZXing, vendor/zxing.min.js)
      2. Consulta a Open Food Facts (única fuente de verdad; NUNCA datos inventados)
      3. Construcción del item con el MISMO esquema que la review existente
-     4. Aviso de posibles irritantes EII (lactosa, gluten, picante, ultraprocesado,
+     4. Aviso NEUTRO de lo que contiene el producto (lactosa, gluten, picante, ultraprocesado,
         aditivos problemáticos) + caché offline de productos ya escaneados
    Se engancha vía window.CF_FS_RECOGNIZE (parche en foodscanflow.js). Si este
    archivo no carga, el flujo cae automáticamente en la simulación original.
@@ -19,18 +19,59 @@
   var CACHE_KEY = 'cf_off_cache_v1';
   var CACHE_DAYS = 30;
 
-  /* ---------- i18n mínima del módulo (es/en/it; fallback en) ---------- */
+  /* ---------- textos del módulo, en los 16 idiomas de la app (fallback en) ----------
+     M24 (auditoría del 5 nov 2026): el aviso decía «⚠️ Possible IBD irritants» a TODO el mundo
+     (también a quien tiene migraña) y sin fuente: una afirmación médica que Apple (norma 1.4.1)
+     puede leer como consejo de salud. Ahora es un DATO NEUTRO de la composición del producto
+     («Contiene: …»), con su fuente (Open Food Facts) y la invitación a apuntarlo en el diario. */
   var TXT = {
-    irrTitle: { en: 'Possible IBD irritants', es: 'Posibles irritantes EII', it: 'Possibili irritanti MICI' },
-    irrNone:  { en: 'No common IBD irritants detected', es: 'Sin irritantes EII comunes detectados', it: 'Nessun irritante MICI comune rilevato' },
-    lactose:  { en: 'lactose / dairy', es: 'lactosa / lácteos', it: 'lattosio / latticini' },
-    gluten:   { en: 'gluten', es: 'gluten', it: 'glutine' },
-    spicy:    { en: 'spicy', es: 'picante', it: 'piccante' },
-    ultra:    { en: 'ultra-processed (NOVA 4)', es: 'ultraprocesado (NOVA 4)', it: 'ultra-processato (NOVA 4)' },
-    additives:{ en: 'additives', es: 'aditivos', it: 'additivi' },
+    contains: { en: 'Contains', es: 'Contiene', ca: 'Conté', fr: 'Contient', de: 'Enthält', it: 'Contiene',
+                pt: 'Contém', ja: '含まれるもの', zh: '含有', ko: '포함 성분', hi: 'इसमें शामिल है',
+                id: 'Mengandung', tr: 'İçerir', ru: 'Содержит', vi: 'Có chứa', ar: 'يحتوي على' },
+    source:   { en: 'Product data: Open Food Facts', es: 'Datos del producto: Open Food Facts',
+                ca: 'Dades del producte: Open Food Facts', fr: 'Données du produit : Open Food Facts',
+                de: 'Produktdaten: Open Food Facts', it: 'Dati del prodotto: Open Food Facts',
+                pt: 'Dados do produto: Open Food Facts', ja: '製品データ：Open Food Facts',
+                zh: '产品数据：Open Food Facts', ko: '제품 정보: Open Food Facts',
+                hi: 'उत्पाद का डेटा: Open Food Facts', id: 'Data produk: Open Food Facts',
+                tr: 'Ürün verisi: Open Food Facts', ru: 'Данные о продукте: Open Food Facts',
+                vi: 'Dữ liệu sản phẩm: Open Food Facts', ar: 'بيانات المنتج: Open Food Facts' },
+    lactose:  { en: 'lactose / dairy', es: 'lactosa / lácteos', ca: 'lactosa / làctics', fr: 'lactose / produits laitiers',
+                de: 'Laktose / Milchprodukte', it: 'lattosio / latticini', pt: 'lactose / lacticínios', ja: '乳糖・乳製品',
+                zh: '乳糖 / 乳制品', ko: '유당 / 유제품', hi: 'लैक्टोज़ / दूध से बने पदार्थ', id: 'laktosa / produk susu',
+                tr: 'laktoz / süt ürünleri', ru: 'лактоза / молочные продукты', vi: 'lactose / sản phẩm từ sữa', ar: 'اللاكتوز / مشتقات الحليب' },
+    gluten:   { en: 'gluten', es: 'gluten', ca: 'gluten', fr: 'gluten', de: 'Gluten', it: 'glutine', pt: 'glúten',
+                ja: 'グルテン', zh: '麸质', ko: '글루텐', hi: 'ग्लूटेन', id: 'gluten', tr: 'gluten', ru: 'глютен',
+                vi: 'gluten', ar: 'الغلوتين' },
+    spicy:    { en: 'spicy ingredients', es: 'ingredientes picantes', ca: 'ingredients picants', fr: 'ingrédients pimentés',
+                de: 'scharfe Zutaten', it: 'ingredienti piccanti', pt: 'ingredientes picantes', ja: '辛い材料',
+                zh: '辛辣配料', ko: '매운 재료', hi: 'तीखी सामग्री', id: 'bahan pedas', tr: 'acı malzemeler',
+                ru: 'острые ингредиенты', vi: 'thành phần cay', ar: 'مكونات حارة' },
+    ultra:    { en: 'ultra-processed (NOVA 4)', es: 'ultraprocesado (NOVA 4)', ca: 'ultraprocessat (NOVA 4)',
+                fr: 'ultra-transformé (NOVA 4)', de: 'hochverarbeitet (NOVA 4)', it: 'ultra-processato (NOVA 4)',
+                pt: 'ultraprocessado (NOVA 4)', ja: '超加工食品（NOVA 4）', zh: '超加工食品（NOVA 4）',
+                ko: '초가공식품 (NOVA 4)', hi: 'अति-प्रसंस्कृत (NOVA 4)', id: 'ultra-proses (NOVA 4)',
+                tr: 'ultra işlenmiş (NOVA 4)', ru: 'ультраобработанный (NOVA 4)', vi: 'siêu chế biến (NOVA 4)',
+                ar: 'فائق المعالجة (NOVA 4)' },
+    additives:{ en: 'additives', es: 'aditivos', ca: 'additius', fr: 'additifs', de: 'Zusatzstoffe', it: 'additivi',
+                pt: 'aditivos', ja: '添加物', zh: '添加剂', ko: '첨가물', hi: 'योजक', id: 'bahan tambahan',
+                tr: 'katkı maddeleri', ru: 'пищевые добавки', vi: 'phụ gia', ar: 'مواد مضافة' },
     checkNote:{ en: 'Log how you feel after eating it — your journal will spot patterns.',
-                es: 'Anota cómo te sientes después de comerlo — tu diario detectará patrones.',
-                it: 'Annota come ti senti dopo averlo mangiato — il diario individuerà gli schemi.' },
+                es: 'Anota cómo te sientes después de comerlo: tu diario detectará patrones.',
+                ca: 'Apunta com et sents després de menjar-ho: el teu diari detectarà patrons.',
+                fr: "Notez comment vous vous sentez après l'avoir mangé : votre journal repérera des tendances.",
+                de: 'Notiere, wie es dir nach dem Essen geht – dein Tagebuch erkennt Muster.',
+                it: 'Annota come ti senti dopo averlo mangiato: il diario individuerà gli schemi.',
+                pt: 'Regista como te sentes depois de o comeres: o teu diário vai encontrar padrões.',
+                ja: '食べたあとの体調を記録しましょう。日記がパターンを見つけます。',
+                zh: '记录吃完后的感受，你的日记会发现规律。',
+                ko: '먹은 뒤 몸 상태를 기록하세요. 일기가 패턴을 찾아 줍니다.',
+                hi: 'इसे खाने के बाद आप कैसा महसूस करते हैं, यह दर्ज करें — आपकी डायरी पैटर्न पहचान लेगी।',
+                id: 'Catat bagaimana perasaanmu setelah memakannya — jurnalmu akan menemukan polanya.',
+                tr: 'Yedikten sonra kendini nasıl hissettiğini kaydet; günlüğün örüntüleri fark edecek.',
+                ru: 'Отметьте, как вы себя чувствуете после еды, — дневник поможет заметить закономерности.',
+                vi: 'Ghi lại cảm giác của bạn sau khi ăn — nhật ký sẽ giúp nhận ra các quy luật.',
+                ar: 'سجّل شعورك بعد تناوله، وستكتشف يومياتك الأنماط.' },
   };
   function t(k) {
     var lang = (window.I18n && window.I18n.lang) || 'en';
@@ -141,7 +182,7 @@
     } catch (e) {}
   }
 
-  /* ---------- detección de irritantes EII (heurística v1, transparente) ---------- */
+  /* ---------- lo que CONTIENE el producto según Open Food Facts (dato, no consejo; M24) ---------- */
   var BAD_ADDITIVES = ['en:e407', 'en:e433', 'en:e466', 'en:e420', 'en:e421',
                        'en:e965', 'en:e966', 'en:e967', 'en:e968'];  // carragenanos, emulsionantes, polioles
   function detectIrritants(p) {
@@ -157,7 +198,7 @@
     return out;
   }
 
-  /* ---------- banner de irritantes (overlay propio, se cierra solo) ---------- */
+  /* ---------- aviso «Contiene: …» (overlay propio, se cierra solo; neutro desde M24) ---------- */
   function showIrritantBanner(irritants, productName) {
     try {
       var old = document.getElementById('cf-irr-banner');
@@ -167,9 +208,11 @@
       d.style.cssText = 'position:fixed;left:12px;right:12px;bottom:88px;z-index:99999;' +
         'background:#3d2f14;color:#ffe9b8;border:1px solid #b98c3a;border-radius:16px;' +
         'padding:12px 16px;font:13px/1.45 Poppins,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.45)';
-      d.innerHTML = '<b style="display:block;margin-bottom:2px">⚠️ ' + t('irrTitle') + '</b>' +
-        '<span>' + irritants.join(' · ') + '</span>' +
-        '<span style="display:block;opacity:.8;margin-top:4px;font-size:12px">' + t('checkNote') + '</span>';
+      var esc = function (x) { return String(x).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+      d.innerHTML = '<b style="display:block;margin-bottom:2px">' + esc(t('contains')) + '</b>' +
+        '<span>' + irritants.map(esc).join(' · ') + '</span>' +
+        '<span style="display:block;opacity:.8;margin-top:4px;font-size:12px">' + esc(t('checkNote')) + '</span>' +
+        '<span style="display:block;opacity:.65;margin-top:4px;font-size:11px">' + esc(t('source')) + '</span>';
       d.onclick = function () { d.remove(); };
       document.body.appendChild(d);
       setTimeout(function () { if (d.parentNode) d.remove(); }, 9000);

@@ -92,24 +92,48 @@
   /* ---- sesión (replica lo que hacía el auth simulado) ----------------- */
   var CF_ONB_KEY = 'cf_onboarded_v1', CF_FRESH_KEY = 'cf_fresh_v1';
   function onbDone() { try { return localStorage.getItem(CF_ONB_KEY) === '1'; } catch (e) { return false; } }
+
+  /* C3 (auditoría del 5 nov 2026): desde SL18 (julio) cfCheckCred y cfSetCred son ASYNC
+     (PBKDF2 con CFHash) y devuelven una PROMESA. Este motor las usaba como si fueran
+     síncronas: «if (window.cfCheckCred(...))» con una promesa da SIEMPRE «sí», y sin red
+     se entraba en la cuenta de otra persona del mismo aparato con cualquier contraseña.
+     Toda comprobación local pasa ahora por checkLocal (solo vale un true de verdad;
+     'needs-online', false o un error = no) y el espejo se guarda ANTES de recargar
+     (saveCred), porque si no, después del arreglo nadie podría entrar sin red.
+     Banco de pruebas: tools/tests/login-sin-red-harness.mjs (con su control). */
+  function checkLocal(credKey, pw) {
+    try {
+      return Promise.resolve(window.cfCheckCred(credKey, pw))
+        .then(function (ok) { return ok === true; }, function () { return false; });
+    } catch (e) { return Promise.resolve(false); }
+  }
+  function saveCred(credKey, pw) {
+    var guardado;
+    try { guardado = Promise.resolve(window.cfSetCred(credKey, pw)).catch(function () {}); }
+    catch (e) { guardado = Promise.resolve(); }
+    /* tope de 5 s: un móvil lento no se queda nunca colgado en «entrando» */
+    return Promise.race([guardado, new Promise(function (r) { setTimeout(r, 5000); })]);
+  }
   function enterFresh(role, email, credKey, pw) {
-    try { window.cfSetCred(credKey, pw); } catch (e) {}
-    window.CFAuth.login({ role: role, email: email, fresh: true });
-    try { localStorage.setItem(CF_FRESH_KEY, '1'); } catch (e) {}
-    try { window.CFAuth.setOnboarded(false); } catch (e) {}
-    location.reload();
+    saveCred(credKey, pw).then(function () {
+      window.CFAuth.login({ role: role, email: email, fresh: true });
+      try { localStorage.setItem(CF_FRESH_KEY, '1'); } catch (e) {}
+      try { window.CFAuth.setOnboarded(false); } catch (e) {}
+      location.reload();
+    });
   }
   function enterReturning(role, email, credKey, pw) {
-    try { window.cfSetCred(credKey, pw); } catch (e) {}
-    window.CFAuth.login({ role: role, email: email });
-    try { if (!onbDone()) localStorage.setItem(CF_FRESH_KEY, '1'); } catch (e) {}
-    try { window.CFAuth.setOnboarded(onbDone()); } catch (e) {}
-    location.reload();
+    saveCred(credKey, pw).then(function () {
+      window.CFAuth.login({ role: role, email: email });
+      try { if (!onbDone()) localStorage.setItem(CF_FRESH_KEY, '1'); } catch (e) {}
+      try { window.CFAuth.setOnboarded(onbDone()); } catch (e) {}
+      location.reload();
+    });
   }
 
   /* borra TODOS los datos locales de la cuenta actual (namespace cfns:<uid>:*)
      y su credencial del registro global — para el borrado real de cuenta (D2.3). */
-  function wipeLocalAccount() {
+  function wipeLocalAccount(cloudUidKnown) {
     try {
       var prefix = (window.CFNS && CFNS.prefix && CFNS.prefix()) || null;   /* 'cfns:<uid>:' */
       if (prefix) {
@@ -127,6 +151,64 @@
         } catch (e) {}
       }
     } catch (e) {}
+    /* M15 (auditoría del 5 nov 2026): borrar la cuenta dejaba en el aparato (a) las fotos del diario
+       (piel, boca) en IndexedDB, (b) sus posts y comentarios borrados en el archivo compartido
+       cf_posts_archive_v1, (c) su foto y su nombre en los espejos públicos compartidos y (d) la
+       caché de Firestore del móvil. Si volvía alguien con el mismo correo, sus fotos reaparecían.
+       Ahora se borra también eso. Devuelve una promesa (lo de IndexedDB y Firestore es asíncrono):
+       wipeAndReload espera como mucho 4 s antes de recargar. Banco: tools/tests/borrado-local-harness.mjs */
+    /* M15 bis (revisión del 5 nov 2026): tras borrar la cuenta en la nube, currentUser() ya es null,
+       así que el uid de NUBE lo trae quien llama (deleteAccountFull lo apunta ANTES de borrar).
+       Sin él, la entrada con ese uid se quedaba en los espejos públicos compartidos. */
+    var lu = null, cu = cloudUidKnown || null;
+    try { lu = (window.CFNS && CFNS.uid && CFNS.uid()) || null; } catch (e) {}
+    if (!cu) { try { var fu = window.CFFirebase && CFFirebase.currentUser && CFFirebase.currentUser(); cu = (fu && fu.uid) || null; } catch (e) {} }
+    try {
+      var arch = JSON.parse(localStorage.getItem('cf_posts_archive_v1'));
+      if (Array.isArray(arch) && lu) {
+        var resto = arch.filter(function (r) { return !(r && r.author === lu); });
+        if (resto.length !== arch.length) localStorage.setItem('cf_posts_archive_v1', JSON.stringify(resto));
+      }
+    } catch (e) {}
+    ['cf_public_profiles_v1', 'cf_public_avatars_v1'].forEach(function (key) {
+      try {
+        var m = JSON.parse(localStorage.getItem(key));
+        if (!m || typeof m !== 'object') return;
+        var cambio = false;
+        [lu, cu].forEach(function (id) { if (id && Object.prototype.hasOwnProperty.call(m, id)) { delete m[id]; cambio = true; } });
+        if (cambio) localStorage.setItem(key, JSON.stringify(m));
+      } catch (e) {}
+    });
+    return Promise.all([borrarFotosDiario(lu), limpiarCacheFirestore()]).then(function () {}, function () {});
+  }
+  function borrarFotosDiario(acct) {
+    return new Promise(function (res) {
+      if (!acct || !window.indexedDB) return res();
+      var req;
+      try { req = indexedDB.open('cf_photodiary_v1'); } catch (e) { return res(); }
+      req.onupgradeneeded = function () { try { req.transaction.abort(); } catch (e) {} };   /* no existía: no se crea */
+      req.onerror = function () { res(); };
+      req.onblocked = function () { res(); };
+      req.onsuccess = function () {
+        var db = req.result;
+        try {
+          if (!db.objectStoreNames.contains('photos')) { db.close(); return res(); }
+          var t = db.transaction('photos', 'readwrite'), st = t.objectStore('photos');
+          var all = st.getAll();
+          all.onsuccess = function () { (all.result || []).forEach(function (r) { if (r && r.acct === acct) st.delete(r.id); }); };
+          t.oncomplete = function () { try { db.close(); } catch (e) {} res(); };
+          t.onerror = t.onabort = function () { try { db.close(); } catch (e) {} res(); };
+        } catch (e) { try { db.close(); } catch (e2) {} res(); }
+      };
+    });
+  }
+  function limpiarCacheFirestore() {
+    try {
+      var fs = window.firebase && window.firebase.firestore && window.firebase.firestore();
+      if (!fs || typeof fs.terminate !== 'function') return Promise.resolve();
+      return fs.terminate().then(function () { return (typeof fs.clearPersistence === 'function') ? fs.clearPersistence() : null; })
+        .catch(function () {});
+    } catch (e) { return Promise.resolve(); }
   }
 
   var _pending = null;   /* {email, pw, credKey, role, mode:'fresh'|'returning', setSu} */
@@ -456,18 +538,24 @@
 
       /* Reconocimiento entre roles (LOCAL, intacto del diseño): email de
          paciente que en este dispositivo pertenece a un doctor → entra doctor. */
-      try {
-        if (!ctx.isDoc && !window.cfHasCred(email) && window.cfHasCred('dr:' + email)) {
-          if (!window.cfCheckCred('dr:' + email, pw)) { ctx.setSignInErr(true); return; }
+      var crossDoc = false;
+      try { crossDoc = !ctx.isDoc && !window.cfHasCred(email) && window.cfHasCred('dr:' + email); } catch (e) {}
+      if (crossDoc) {
+        checkLocal('dr:' + email, pw).then(function (ok) {
+          if (!ok) { ctx.setSignInErr(true); return; }
           ctx.setSignInErr(false); ctx.setNoAccount(false);
-          enterReturning('doctor', email, 'dr:' + email, pw); return;
-        }
-      } catch (e) {}
+          enterReturning('doctor', email, 'dr:' + email, pw);
+        });
+        return;
+      }
 
       if (!available()) {
-        /* Sin red: solo si ya te autenticaste antes en este dispositivo. */
-        try { if (window.cfCheckCred(credKey, pw)) { ctx.setSignInErr(false); ctx.setNoAccount(false); enterReturning(role, email, credKey, pw); return; } } catch (e) {}
-        ctx.setSignInErr(false); ctx.setNoAccount(false); toast(errMsg('network'), 'error'); return;
+        /* Sin red: solo si ya te autenticaste antes en este dispositivo Y la contraseña es la buena. */
+        checkLocal(credKey, pw).then(function (ok) {
+          if (ok) { ctx.setSignInErr(false); ctx.setNoAccount(false); enterReturning(role, email, credKey, pw); return; }
+          ctx.setSignInErr(false); ctx.setNoAccount(false); toast(errMsg('network'), 'error');
+        });
+        return;
       }
 
       FB().signIn(email, pw).then(function (r) {
@@ -480,8 +568,10 @@
           return;
         }
         if (String(r.code || '').indexOf('network') >= 0) {
-          try { if (window.cfCheckCred(credKey, pw)) { enterReturning(role, email, credKey, pw); return; } } catch (e) {}
-          toast(errMsg('network'), 'error'); return;
+          return checkLocal(credKey, pw).then(function (ok) {
+            if (ok) { enterReturning(role, email, credKey, pw); return; }
+            toast(errMsg('network'), 'error');
+          });
         }
         ctx.setSignInErr(true);   /* Firebase v10 no distingue no-existe de pw-mal → mensaje único */
       }).catch(function () { ctx.setSignInErr(true); });
@@ -498,11 +588,18 @@
          esa cuenta no tiene contraseña que pedir si Firebase volviera a exigir un inicio reciente. */
       var social = !!(opts && opts.social);
       var done = false;
+      /* M15 bis: el uid de NUBE se apunta mientras la sesión existe (aquí y en purgeCloudFootprint,
+         que corre justo antes de cada deleteAccount); después del borrado Firebase ya no lo da. */
+      var cloudUid = null;
+      try { var u0 = FB().currentUser(); cloudUid = (u0 && u0.uid) || null; } catch (e) {}
       var wipeAndReload = function () {                /* solo tras confirmar el borrado en la nube (o sin Firebase) */
         if (done) return; done = true;                /* idempotente: nunca borra/recarga dos veces */
-        try { wipeLocalAccount(); } catch (e) {}
+        var limpieza = null;
+        try { limpieza = wipeLocalAccount(cloudUid); } catch (e) {}
         try { window.CFAuth && CFAuth.logout(); } catch (e) {}
-        location.reload();
+        /* M15: espera a que acaben las fotos del diario y la caché (como mucho 4 s) */
+        Promise.race([Promise.resolve(limpieza), new Promise(function (r) { setTimeout(r, 4000); })])
+          .then(function () { location.reload(); }, function () { location.reload(); });
       };
       /* DEL2: el aviso lleva una referencia corta del paso que falló (p. ej. «(ref delete-unknown)»):
          la consola del WKWebView no llega a la Pi y sin ella el fallo del 26 oct no se podía leer. */
@@ -535,6 +632,7 @@
       var purgeCloudFootprint = function () {
         var u = null; try { u = FB().currentUser(); } catch (e) {}
         var me = u && u.uid; var st = window.CFStore;
+        if (me) cloudUid = me;                         /* M15 bis: también tras volver a entrar (askAndDelete) */
         if (!me || !st || typeof st.del !== 'function') return Promise.resolve({ ok: false, code: 'unavailable', failed: [] });
         var paths = [
           'users/' + me + '/public/profile',
@@ -678,6 +776,7 @@
     }
   };
 
+  CFAuthFB._wipeLocalAccount = wipeLocalAccount;   /* M15: solo para el banco de pruebas */
   window.CFAuthFB = CFAuthFB;
 
   /* LOGOUT1 — mientras el botón de Claude Design llame a CFAuth.logout() y

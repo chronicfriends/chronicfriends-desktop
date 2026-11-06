@@ -157,15 +157,25 @@
     var me = uid();
     if (!reqsMap()['in'][other]) return nope('no-request');
     var m = members(me, other);
+    var listo = function () {
+      var f = friendsMap(); f[other] = { since: now() }; save(FRIENDS_KEY, f);
+      var q = reqsMap(); delete q['in'][other]; save(REQS_KEY, q);
+      emit();
+      return { ok: true };
+    };
+    /* M8 (auditoría del 5 nov 2026): crear la amistad y borrar la petición en UNA operación
+       atómica. Las reglas (pendingFrom con get) ven la petición tal y como estaba ANTES del
+       lote, así que la creación sigue autorizada. Sin CFStore.batch (motor viejo), como antes. */
+    if (ST() && typeof ST().batch === 'function') {
+      return ST().batch([
+        { op: 'set', path: PAIR_COL + '/' + pairId(me, other), data: { members: m, since: now() }, overwrite: true },
+        { op: 'del', path: REQ_COL + '/' + reqId(other, me) },
+      ]).then(function (r) { return (r && r.ok) ? listo() : r; });
+    }
     return ST().colSet(PAIR_COL, pairId(me, other), { members: m, since: now() }, { overwrite: true })
       .then(function (r) {
         if (!(r && r.ok)) return r;
-        return ST().del(REQ_COL + '/' + reqId(other, me)).then(function () {
-          var f = friendsMap(); f[other] = { since: now() }; save(FRIENDS_KEY, f);
-          var q = reqsMap(); delete q['in'][other]; save(REQS_KEY, q);
-          emit();
-          return { ok: true };
-        });
+        return ST().del(REQ_COL + '/' + reqId(other, me)).then(listo);
       });
   }
 
@@ -199,6 +209,38 @@
     });
   }
 
+  /* ---- M2 (auditoría del 5 nov 2026): BLOQUEAR TAMBIÉN CORTA EN LA NUBE ----
+     Bloquear solo escondía a la persona EN ESTE MÓVIL: seguía siendo amiga en la nube, podía
+     seguir escribiendo (llegaban los avisos «X te ha escrito») e invitar a «Juntos», aunque la
+     hoja de bloquear promete «they can't message you». Ahora, cada vez que cambia la lista de
+     bloqueos (evento 'cf-blocks' de design/blocks.jsx) y cada vez que llega la nube, a cada
+     persona bloqueada se le deshace la amistad, se rechaza su petición pendiente y se retira la
+     mía. Los chats 1-a-1 exigen amistad en las reglas, así que deja de poder escribir.
+     Desbloquear NO devuelve la amistad (habría que volver a pedirla). Banco:
+     tools/tests/bloquear-corta-harness.mjs */
+  var cortando = {};
+  function bloqueados() {
+    try { return ((window.CFBlocks && window.CFBlocks.items) || []).map(function (b) { return b && b.id; }).filter(Boolean); }
+    catch (e) { return []; }
+  }
+  function cortarBloqueados() {
+    if (!active()) return;
+    var ids = bloqueados(); if (!ids.length) return;
+    var f = friendsMap(), q = reqsMap();
+    ids.forEach(function (id) {
+      if (cortando[id] || id === uid()) return;
+      var pasos = [];
+      if (f[id]) pasos.push(function () { return unfriend(id); });
+      if (q['in'] && q['in'][id]) pasos.push(function () { return reject(id); });
+      if (q.out && q.out[id] && (q.out[id].status || 'pending') === 'pending') pasos.push(function () { return cancel(id); });
+      if (!pasos.length) return;
+      cortando[id] = true;
+      pasos.reduce(function (p, fn) { return p.then(fn).catch(function () {}); }, Promise.resolve())
+        .then(function () { delete cortando[id]; });
+    });
+  }
+  try { window.addEventListener('cf-blocks', function () { try { cortarBloqueados(); } catch (e) {} }); } catch (e) {}
+
   /* ---- escucha de la nube ---------------------------------------------- */
   var unsubs = [];
   function stop() { unsubs.splice(0).forEach(function (u) { try { u(); } catch (e) {} }); }
@@ -221,6 +263,7 @@
       save(FRIENDS_KEY, f);
       try { if (ID() && ID().prefetch) ID().prefetch(others); } catch (e) {}
       emit();
+      cortarBloqueados();
     }, function (col) { return col.where('members', 'array-contains', me).limit(LIMIT); }));
 
     /* peticiones que RECIBO (el estado se filtra aquí, en el cliente: así la
@@ -236,6 +279,7 @@
       save(REQS_KEY, q);
       try { if (ID() && ID().prefetch) ID().prefetch(others); } catch (e) {}
       emit();
+      cortarBloqueados();
     }, function (col) { return col.where('to', '==', me).limit(LIMIT); }));
 
     /* peticiones que ENVÍO (para saber cuándo pintar «enviada») */
@@ -247,6 +291,7 @@
       });
       save(REQS_KEY, q);
       emit();
+      cortarBloqueados();
     }, function (col) { return col.where('from', '==', me).limit(LIMIT); }));
   }
 

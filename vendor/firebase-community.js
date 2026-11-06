@@ -84,13 +84,29 @@
   /* ---- PUSH: sube un post propio a la nube ----------------------------- */
   function pushPost(p, isRetry) {
     if (!active() || !isOwn(p)) return;
-    var data = { authorUid: uid(), ts: p.ts || now(), _deleted: !!p.deleted };
-    POST_PUBLIC_KEYS.forEach(function (k) { if (p[k] !== undefined) data[k] = p[k]; });
-    ST().colSet(POSTS_COL, docIdFor(p.id), data).then(function (r) {
+    var data, opts;
+    if (p.deleted) {
+      /* A6 (auditoría del 5 nov 2026): un post BORRADO subía ENTERO con la marca de borrado
+         (título, texto, nombre, foto…) y, como colSet MEZCLA, aunque se quitaran campos se
+         quedaban los de antes en la nube: cada móvil verificado lo descargaba y se podía leer.
+         Ahora la lápida es MÍNIMA y SUSTITUYE al documento entero (overwrite): solo quién, cuál,
+         cuándo y «borrado». Lo mismo cuando el arranque vuelve a subir los posts propios.
+         Las reglas (validPostData) solo exigen authorUid. Banco: tools/tests/post-borrado-harness.mjs */
+      data = { authorUid: uid(), id: p.id, ts: p.ts || now(), _deleted: true, deleted: true };
+      opts = { overwrite: true };
+    } else {
+      data = { authorUid: uid(), ts: p.ts || now(), _deleted: false };
+      POST_PUBLIC_KEYS.forEach(function (k) { if (p[k] !== undefined) data[k] = p[k]; });
+    }
+    ST().colSet(POSTS_COL, docIdFor(p.id), data, opts).then(function (r) {
       if (r && r.ok) return;
-      if (!isRetry && r && String(r.code).indexOf('permission-denied') >= 0) {
-        CF().refreshToken().then(function () { pushPost(p, true); });
-      }
+      if (!(r && String(r.code).indexOf('permission-denied') >= 0)) return;
+      if (!isRetry) { CF().refreshToken().then(function () { pushPost(p, true); }); return; }
+      /* A6 bis (revisión del 5 nov 2026): si el post estaba OCULTO por moderación, las reglas no dejan
+         al autor tocarlo (notHidden() en el update) y la lápida se rechaza también tras refrescar el
+         token: el texto se quedaba en la nube. El autor SÍ puede borrar su documento (allow delete),
+         así que se borra de verdad. En el siguiente arranque la lápida mínima ya entra como alta nueva. */
+      if (p.deleted) ST().del(POSTS_COL + '/' + docIdFor(p.id));
     });
   }
   function pushAllOwn() {

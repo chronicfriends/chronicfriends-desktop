@@ -34,6 +34,9 @@
       ready: Promise.resolve(false),
       _reason: 'firestore-sdk-or-app-missing',
       set: function () { return Promise.resolve({ ok: false, code: 'unavailable' }); },
+      setIfNotNewer: function () { return Promise.resolve({ ok: false, code: 'unavailable' }); },
+      batch: function () { return Promise.resolve({ ok: false, code: 'unavailable' }); },
+      getExists: function () { return Promise.resolve({ ok: false, code: 'unavailable' }); },
       get: function () { return Promise.resolve(null); },
       del: function () { return Promise.resolve({ ok: false, code: 'unavailable' }); },
       onDoc: function () { return function () {}; },
@@ -118,6 +121,58 @@
             .then(function () { return ok(); }).catch(fail);
         } catch (e) { return Promise.resolve(fail(e)); }
       });
+    },
+
+    /* A9 (auditoría del 5 nov 2026) · escritura CONDICIONAL para el arranque de firebase-sync.js.
+       En una transacción: lee el doc del servidor y SOLO escribe si no hay nada más nuevo que lo
+       que este móvil sincronizó la última vez (knownTs = su `ts`). Si el doc existe y este móvil
+       nunca lo sincronizó (knownTs 0), o el del servidor es más nuevo → NO escribe ({skipped:true}):
+       el listener bajará lo de la nube. Así un móvil con datos viejos ya no pisa al arrancar lo
+       nuevo que subió otro. Sin red la transacción falla → {ok:false} y se reintenta otro día.
+       Sobrescribe el doc entero (como set de una caja de salud, que siempre se manda completa). */
+    setIfNotNewer: function (path, data, knownTs) {
+      try {
+        var r0 = ref(path);
+        return db.runTransaction(function (tx) {
+          return tx.get(r0).then(function (snap) {
+            if (snap.exists) {
+              var cur = snap.data() || {};
+              var curTs = typeof cur.ts === 'number' ? cur.ts : 0;
+              if (!(knownTs > 0) || curTs > knownTs) return { skipped: true, cloudTs: curTs };
+            }
+            tx.set(r0, data);
+            return { skipped: false };
+          });
+        }).then(function (r) { return ok(r); }).catch(fail);
+      } catch (e) { return Promise.resolve(fail(e)); }
+    },
+
+    /* M8 (auditoría del 5 nov 2026) · varias escrituras ATÓMICAS: o todas o ninguna.
+       ops: [{ op: 'set', path, data, overwrite }, { op: 'del', path }]. Lo usa ACEPTAR una amistad
+       (crear la amistad y borrar la petición juntas: si la petición quedaba colgada, una amistad
+       deshecha se podía volver a crear sola). */
+    batch: function (ops) {
+      return withRetry(function () {
+        try {
+          var b = db.batch();
+          (ops || []).forEach(function (o) {
+            if (o.op === 'del') b.delete(ref(o.path));
+            else b.set(ref(o.path), o.data, { merge: !o.overwrite });
+          });
+          return b.commit().then(function () { return ok(); }).catch(fail);
+        } catch (e) { return Promise.resolve(fail(e)); }
+      });
+    },
+
+    /* M17 (auditoría del 5 nov 2026) · como get, pero distingue «no existe» de «no se pudo leer»:
+       → {ok:true, exists:true|false, data} o {ok:false, code}. Así un fallo de red no se
+       confunde con «esa persona ya no tiene perfil». */
+    getExists: function (path) {
+      try {
+        return ref(path).get().then(function (snap) {
+          return ok({ exists: !!snap.exists, data: snap.exists ? snap.data() : null });
+        }).catch(fail);
+      } catch (e) { return Promise.resolve(fail(e)); }
     },
 
     /* lee un doc → devuelve su data (objeto) o null si no existe. */

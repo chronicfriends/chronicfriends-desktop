@@ -174,21 +174,54 @@
 
   /* deja el doc en el espejo que ya consulta build/publicprofile.js, indexado
      por el uid de NUBE: a partir de ahí cfPublicNameFor(uidNube) funciona. */
+  /* M17 (auditoría del 5 nov 2026): el país, la edad, los años con la enfermedad y la bio de
+     OTRAS personas se guardaban en el espejo cf_public_profiles_v1, que es de TODO el aparato y
+     se quedaba para siempre (aunque esa persona borrase su cuenta). Ahora esos 4 campos viven
+     solo en memoria (memo: la ficha los pide con CFIdentity.profile al abrirse), y si la nube
+     confirma que ya no hay perfil, su copia se borra del espejo. Banco:
+     tools/tests/perfiles-ajenos-harness.mjs */
+  var PRIVADOS = ['country', 'bio', 'age', 'crohnYears'];
+  function sinPrivados(doc) {
+    var c = {};
+    Object.keys(doc || {}).forEach(function (k) { if (PRIVADOS.indexOf(k) < 0) c[k] = doc[k]; });
+    return c;
+  }
+  function olvidar(uid) {
+    try {
+      var mirror = load(MIRROR_KEY);
+      if (!mirror[uid]) return;
+      delete mirror[uid];
+      save(MIRROR_KEY, mirror);
+      try { window.dispatchEvent(new Event('cf-public-profile')); } catch (e) {}
+    } catch (e) {}
+  }
   function cache(uid, doc) {
     memo[uid] = { ts: Date.now(), doc: doc || null };
     if (!doc) return;
     try {
       var mirror = load(MIRROR_KEY);
       var prev = mirror[uid];
+      var copia = sinPrivados(doc);
       /* CHAT1a_CAMPOS: la comparacion miraba solo name/avatar/lang, asi que
          alguien que cambiase su edad o su biografia NO refrescaba el espejo y
          la ficha seguia enseñando lo viejo. Se compara el documento entero. */
-      if (prev && JSON.stringify(prev) === JSON.stringify(doc)) return;
-      mirror[uid] = doc;
+      if (prev && JSON.stringify(prev) === JSON.stringify(copia)) return;
+      mirror[uid] = copia;
       save(MIRROR_KEY, mirror);
       try { window.dispatchEvent(new Event('cf-public-profile')); } catch (e) {}
     } catch (e) {}
   }
+  /* limpieza de lo que ya había: los 4 campos fuera de TODO el espejo (una vez por arranque) */
+  try {
+    (function () {
+      var mirror = load(MIRROR_KEY), cambio = false;
+      Object.keys(mirror || {}).forEach(function (u) {
+        var e = mirror[u];
+        if (e && typeof e === 'object' && PRIVADOS.some(function (k) { return k in e; })) { mirror[u] = sinPrivados(e); cambio = true; }
+      });
+      if (cambio) save(MIRROR_KEY, mirror);
+    })();
+  } catch (e) {}
 
   function profile(uid) {
     if (!uid || typeof uid !== 'string') return Promise.resolve(null);
@@ -199,7 +232,13 @@
     if (hit && (Date.now() - hit.ts) < TTL_MS) return Promise.resolve(hit.doc);
     if (inflight[uid]) return inflight[uid];
     if (!usable()) return Promise.resolve(hit ? hit.doc : null);
-    var p = ST().get('users/' + uid + '/public/profile').then(function (d) {
+    var lectura = (typeof ST().getExists === 'function')
+      ? ST().getExists('users/' + uid + '/public/profile').then(function (r) {
+          if (r && r.ok && r.exists === false) olvidar(uid);     /* M17: la nube dice que ya no hay perfil */
+          return (r && r.ok) ? r.data : null;
+        })
+      : ST().get('users/' + uid + '/public/profile');
+    var p = lectura.then(function (d) {
       var doc = null;
       try { doc = (window.cfPubSanitize && window.cfPubSanitize(d)) || null; } catch (e) { doc = d || null; }
       /* CHAT1a_CAMPOS (31 ago 2026) — REPONER lo que el sanitizador no conoce.
