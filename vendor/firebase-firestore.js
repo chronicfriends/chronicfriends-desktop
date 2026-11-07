@@ -35,6 +35,7 @@
       _reason: 'firestore-sdk-or-app-missing',
       set: function () { return Promise.resolve({ ok: false, code: 'unavailable' }); },
       setIfNotNewer: function () { return Promise.resolve({ ok: false, code: 'unavailable' }); },
+      delIfNotNewer: function () { return Promise.resolve({ ok: false, code: 'unavailable' }); },
       batch: function () { return Promise.resolve({ ok: false, code: 'unavailable' }); },
       getExists: function () { return Promise.resolve({ ok: false, code: 'unavailable' }); },
       get: function () { return Promise.resolve(null); },
@@ -130,6 +131,26 @@
        el listener bajará lo de la nube. Así un móvil con datos viejos ya no pisa al arrancar lo
        nuevo que subió otro. Sin red la transacción falla → {ok:false} y se reintenta otro día.
        Sobrescribe el doc entero (como set de una caja de salud, que siempre se manda completa). */
+    /* A9 bis (7 nov 2026; H5 de la revisión independiente) · BORRADO condicional, con la misma regla que
+       setIfNotNewer: solo si el doc sigue en el `ts` que leyó este móvil (o ya no existe). Si alguien lo
+       escribió después → no borra ({skipped:true}) y firebase-sync.js vuelve a decidir. Sin red la
+       transacción falla → {ok:false}: un borrado decidido sin red ya no sale a ciegas al volver la red. */
+    delIfNotNewer: function (path, knownTs) {
+      try {
+        var r1 = ref(path);
+        return db.runTransaction(function (tx) {
+          return tx.get(r1).then(function (snap) {
+            if (!snap.exists) return { skipped: false, gone: true };
+            var cur = snap.data() || {};
+            var curTs = typeof cur.ts === 'number' ? cur.ts : 0;
+            if (!(knownTs > 0) || curTs > knownTs) return { skipped: true, cloudTs: curTs };
+            tx.delete(r1);
+            return { skipped: false };
+          });
+        }).then(function (r) { return ok(r); }).catch(fail);
+      } catch (e) { return Promise.resolve(fail(e)); }
+    },
+
     setIfNotNewer: function (path, data, knownTs) {
       try {
         var r0 = ref(path);

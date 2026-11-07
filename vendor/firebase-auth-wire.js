@@ -765,10 +765,15 @@
         return Promise.race([Promise.resolve(p).catch(function () {}), new Promise(function (r) { setTimeout(r, ms); })]);
       };
       setTimeout(finish, LOGOUT_MAX_MS);
-      try { window.CFSync && CFSync.pushNow && CFSync.pushNow(); } catch (e) {}
-      upTo(new Promise(function (r) { setTimeout(r, 250); }).then(function () {   /* deja que las subidas lleguen a la cola */
+      var subidas = null;
+      try { subidas = window.CFSync && CFSync.pushNow && CFSync.pushNow(); } catch (e) {}
+      /* A9 bis (7 nov 2026): las cajas de salud suben con una TRANSACCIÓN (lee la nube y escribe solo
+         si nadie escribió en medio), y una transacción no entra en waitForPendingWrites: se espera
+         también la promesa de pushNow, con el mismo tope. Lo que no llegue sigue pendiente en el
+         espacio de esta cuenta y sale la próxima vez que entre. */
+      upTo(Promise.all([subidas, new Promise(function (r) { setTimeout(r, 250); }).then(function () {   /* deja que las subidas lleguen a la cola */
         try { return window.firebase.firestore().waitForPendingWrites(); } catch (e) { return null; }
-      }), 2500).then(function () {
+      })]), 2500).then(function () {
         var out = null;
         try { if (available() && FB().currentUser()) out = FB().signOutFb(); } catch (e) { out = null; }
         return upTo(out, 1500);

@@ -196,20 +196,74 @@
          local está vacío (otro dispositivo, o tras la migración por cuentas)
          los posts propios se recuperan de la nube; el dedupe por id de abajo
          conserva la copia local cuando existe. */
-      var remote = postDocs.filter(function (d) { return !d._deleted && d.hidden !== true; }).map(toPost)
-        .concat(officialDocs.filter(function (d) { return !d._deleted && d.hidden !== true; }).map(toOfficialPost));
+      /* 🔴 M6 bis (7 nov 2026; auditoría del 5 nov) — CADA POST, SU PROPIO ID EN EL MURO.
+         El dedupe iba SOLO por el `id` que pone cada autor: un post de una persona con el id de una
+         publicación oficial, o el de otro post, la ESCONDÍA del muro de todos; y si copiaba el id de
+         un post MÍO, el store (que busca por id) podía tocar el suyo al pedir borrar el mío. Las reglas
+         del 5 nov ya atan el doc a <uid>__<id> y prohíben 'o_' a las personas; aquí, en el móvil:
+           · conservan su id los posts de AQUÍ, las oficiales y mis copias de la nube (estas se juntan
+             con la local, como siempre);
+           · entre los posts AJENOS, SIN GANADOR: si un id se repite, o choca con uno de los de arriba, o
+             tiene la forma del documento de otro post, TODOS llevan el id de su DOCUMENTO (<uid>__<id>,
+             único). Antes ganaba «el más antiguo», según un `ts` que pone el propio autor: con dos
+             documentos (uno con el ts atrasado) se seguía escondiendo el post de otra persona y se
+             quedaba sus comentarios (revisión independiente del 7 nov, b1/b2,
+             auditorias/20261107-revision-m6bis/INFORME.md, propuesta P1-P6);
+           · un post de persona con id 'o_…' (de antes de las reglas) no se pinta, ni uno con `deleted`;
+           · mis comentarios guardan el DOCUMENTO de su post (_pcid/_pcol) y van siempre con él: si ese
+             post no está en el muro, se aparcan, nunca debajo de otro; mis «me gusta» se casan por postCid.
+         2.ª revisión (INFORME-2.md, propuesta-2): mientras no llegue la 1.ª foto de comentarios se quedan los
+         de otros guardados en el móvil (P5e); lo que denuncié sigue silenciado aunque su post cambie de id (P7,
+         envoltorio de CFReports.isMuted); un id «~…» lleva el de su documento (P2b); mis comentarios VIEJOS (sin
+         _pcid) se atan a su documento según la nube y nunca van a un post más de 1 día más nuevo que ellos (P6d);
+         y solo se atan a posts de la nube (P6f).
+         Sin ids repetidos (lo normal), nada cambia respecto a antes (b4: 1.400 pasos iguales). Con uno
+         repetido, el post de la víctima cambia de id: un guardado viejo queda huérfano, pero ya no apunta
+         al del otro. El borrador del 5 nov dejaba dos posts con el MISMO id en el store y no se podía
+         borrar el propio (auditorias/20261105-revision-vendor/m6-borrar.mjs). Banco: tools/tests/muro-dedupe-harness.mjs */
+      var me = uid();
+      var mineDoc = function (d) { return !!(me && d.authorUid && d.authorUid === me); };
+      var fuera = function (d) { return !d || d._deleted || d.deleted === true || d.hidden === true; };
+      var liveP = postDocs.filter(function (d) {
+        return !fuera(d) && !(!mineDoc(d) && String(d.id || '').indexOf('o_') === 0);
+      });
+      var liveO = officialDocs.filter(function (d) { return !fuera(d); });
+      var taken = {}, feedId = {};
+      own.forEach(function (p) { if (p && p.id) taken[p.id] = 1; });
+      liveO.forEach(function (d) { if (d.id) taken[d.id] = 1; });
+      liveP.forEach(function (d) { if (d.id && mineDoc(d)) taken[d.id] = 1; });
+      var docIds = {}, veces = {}, own_ = Object.prototype.hasOwnProperty;
+      postDocs.forEach(function (d) { if (d && d._id) docIds[d._id] = 1; });
+      var otros = liveP.filter(function (d) { return d.id && !mineDoc(d); });
+      otros.forEach(function (d) { veces[d.id] = (veces[d.id] || 0) + 1; });
+      otros.forEach(function (d) {
+        var solo = veces[d.id] === 1 && !own_.call(taken, d.id) && !own_.call(docIds, d.id)
+          && String(d.id).charAt(0) !== '~';           /* P2b: '~…' es la clave de mis comentarios aparcados (P5) */
+        feedId[d._id] = solo ? d.id : d._id;          /* repetido o con forma de documento: el de su documento */
+      });
+      var alias = {};
+      var remote = liveP.map(function (d) {
+        var p = toPost(d); if (feedId[d._id]) p.id = feedId[d._id];
+        if (!mineDoc(d)) alias[p.id] = [d.id, d._id];  /* P7: su id original y su documento (denuncias) */
+        return p;
+      })
+        .concat(liveO.map(toOfficialPost));
       var seen = {}, merged = [];
       own.concat(remote).forEach(function (p) { if (p && p.id && !seen[p.id]) { seen[p.id] = 1; merged.push(p); } });
       merged.sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
       P.userPosts = merged;
       /* FB3b: el nº de likes de cada post viene GRATIS en su doc (campo `likes`).
          Se refresca el contador denormalizado de TODOS los docs (propios y ajenos)
-         y se recompone CFPosts.likes sin necesidad del listener global de likes. */
+         y se recompone CFPosts.likes sin necesidad del listener global de likes.
+         M6 bis: con la MISMA clave que el post lleva en el muro. */
       var cc = {};
-      docs.forEach(function (d) {
-        if (d && d.id && !d._deleted) cc[d.id] = (typeof d.likes === 'number' && d.likes > 0) ? d.likes : 0;
+      liveP.concat(liveO).forEach(function (d) {
+        if (d && d.id && !d._deleted) cc[feedId[d._id] || d.id] = (typeof d.likes === 'number' && d.likes > 0) ? d.likes : 0;
       });
       cloudCount = cc;
+      muteAlias = alias; wrapReports();
+      rebuildMyLikes();
+      rebuildComments();
       recomputeLikes();   /* recomputeLikes hace emit() */
   }
   function stopListen() { if (colUnsub) { try { colUnsub(); } catch (e) {} colUnsub = null; } postDocs = []; }
@@ -347,13 +401,25 @@
   }
 
   var likesUnsub = null;
+  /* M6 bis: mis «me gusta» se casan con su post por el DOCUMENTO del post (postCid), no por el id
+     que tenía en el muro al darlo: ese id puede ser otro si aparece un post con el mismo id. Sin
+     documento conocido (o sin postCid), por su localId, como antes. */
+  var likeDocs = [];
+  function rebuildMyLikes() {
+    var map = cidToLocalMap(), mc = {};
+    likeDocs.forEach(function (d) {
+      if (!d) return;
+      var lid = d.postCid ? map[d.postCid] : d.localId;
+      if (lid) mc[lid] = true;
+    });
+    myCloudLikes = mc;
+  }
   function startListenLikes() {
     if (likesUnsub) return;
     var me = uid();
     likesUnsub = ST().onGroup('likes', function (docs) {
-      var mc = {};
-      docs.forEach(function (d) { if (d && d.localId) mc[d.localId] = true; });
-      myCloudLikes = mc;
+      likeDocs = docs || [];
+      rebuildMyLikes();
       /* la nube ya refleja mi estado → limpia los pendientes que coincidan (fin
          del optimismo, sin parpadeo: el pendiente aguanta hasta que la nube iguala). */
       Object.keys(myLikePending).forEach(function (id) {
@@ -368,7 +434,7 @@
       try { return g.where('uid', '==', me).limit(LIKES_LIMIT); } catch (e) { return g; }
     });
   }
-  function stopListenLikes() { if (likesUnsub) { try { likesUnsub(); } catch (e) {} likesUnsub = null; } }
+  function stopListenLikes() { if (likesUnsub) { try { likesUnsub(); } catch (e) {} likesUnsub = null; } likeDocs = []; }
 
   /* ---- COMENTARIOS (Fase 3, capa siguiente) ----------------------------
      Local: CFPosts.comments = { postLocalId: [ {name,text,ts,author,role} ] }
@@ -414,9 +480,11 @@
 
   function pushComment(postLocalId, c, isRetry) {
     if (!active() || !isOwnComment(c)) return;
-    var cid = cidById(postLocalId); if (!cid) return;                 /* el post debe existir en la nube */
+    var cid = c._pcid ? (cidToLocalMap()[c._pcid] ? c._pcid : null) : cidById(postLocalId);   /* SU post, y solo si sigue en el muro */
+    if (!cid) return;
+    if (!c._pcid) { var hp = findPost(postLocalId); if (hp && c.ts + DIA < (hp.ts || 0)) return; }   /* P6d: viejo → nunca a un post más nuevo */
     var text = String(c.text || ''); if (!text || text.length > 2000) return;  /* fuera de contrato → no subir */
-    var path = colOf(postLocalId) + '/' + cid + '/comments';   /* MURO1: la colección de ESE post */
+    var path = (c._pcol || colOf(postLocalId)) + '/' + cid + '/comments';   /* MURO1: la colección de ESE post */
     ST().colSet(path, commentDocId(c.ts), commentDoc(c)).then(function (r) {
       if (r && r.ok) return;
       if (!isRetry && r && String(r.code).indexOf('permission-denied') >= 0) {
@@ -444,12 +512,56 @@
     };
   }
 
+  var commentDocs = [], commentsLoaded = false;
+  var DIA = 86400000;
+  /* P7 (2.ª revisión del 7 nov) · DENUNCIAS: lo que denuncié (CFReports.muted 'post:<id del muro>') sigue
+     silenciado aunque su post cambie de id en el muro (P2): también cuentan su id original y su documento.
+     Precio: otro post con ese MISMO id original también queda silenciado para quien denunció. */
+  var muteAlias = {};
+  function wrapReports() {
+    var R = window.CFReports;
+    if (!R || typeof R.isMuted !== 'function' || R.__cfAlias) return;
+    var orig = R.isMuted;
+    var otro = function (type, a, id, cola) {
+      return !!(a && ((a[0] && a[0] !== id && orig.call(R, type, a[0] + cola)) || (a[1] && a[1] !== id && orig.call(R, type, a[1] + cola))));
+    };
+    R.isMuted = function (type, id) {
+      if (orig.call(R, type, id)) return true;
+      try {
+        if (type === 'post') return otro('post', muteAlias[id], id, '');
+        if (type === 'comment') { var s = String(id), k = s.lastIndexOf(':'); if (k > 0) return otro('comment', muteAlias[s.slice(0, k)], s.slice(0, k), s.slice(k)); }
+      } catch (e) {}
+      return false;
+    };
+    R.__cfAlias = true;
+  }
   function startListenComments() {
     if (commentsUnsub) return;
-    var me = uid();
     commentsUnsub = ST().onGroup('comments', function (docs) {
+      commentDocs = docs || []; commentsLoaded = true;
+      rebuildComments();
+      try { var P = POSTS(); if (P) P.emit(); } catch (e) {}
+    }, function (g) {
+      /* FB3 (coste Blaze): solo los COMMENTS_LIMIT comentarios más recientes de todo
+         el grupo. orderBy('createdAt') sobre un único campo no exige índice compuesto;
+         commentDoc siempre escribe createdAt. Si el SDK rechazara la query, onGroup
+         deja rastro en consola y degrada al grupo sin filtro. */
+      try { return g.orderBy('createdAt', 'desc').limit(COMMENTS_LIMIT); } catch (e) { return g; }
+    });
+  }
+  /* M6 bis (P5 de la revisión del 7 nov): los comentarios se recolocan en CADA fusión del muro (no solo
+     cuando llega una foto de comentarios), para que sigan a su post aunque su id en el muro cambie */
+  function rebuildComments() {
       var P = POSTS(); if (!P) return;
+      var me = uid();
+      var docs = commentDocs || [];
       var map = cidToLocalMap();
+      /* P6d · mis comentarios VIEJOS (sin _pcid): la nube dice su documento (<post>/comments/<miUid>__<ts>) */
+      var mioEn = {}, tsDe = {}, cidDe = {};
+      docs.forEach(function (d) { if (d && me && d.authorUid === me && d._pid && d._id === me + '__' + d.createdAt) mioEn['t' + d.createdAt] = d._pid; });
+      var propio = {};
+      (P.userPosts || []).forEach(function (p) { if (p && p.id) { tsDe[p.id] = p.ts || 0; if (isOwn(p)) propio[p.id] = 1; } });
+      Object.keys(map).forEach(function (cid) { cidDe[map[cid]] = cid; });
       var byPost = {};
       docs.forEach(function (d) {
         if (!d || d.authorUid === me || d._deleted || d.hidden === true) return;   /* los míos ya están en local · SL9: hidden = moderado */
@@ -462,7 +574,18 @@
       /* fusión: conserva TODOS los comentarios locales (no _remote) y añade los remotos */
       var merged = {};
       Object.keys(P.comments || {}).forEach(function (pid) {
-        merged[pid] = (P.comments[pid] || []).filter(function (c) { return !c._remote; });
+        (P.comments[pid] || []).forEach(function (c) {
+          if (!c) return;
+          if (c._remote) { if (!commentsLoaded) (merged[pid] || (merged[pid] = [])).push(c); return; }   /* P5e */
+          if (!c._pcid && isOwnComment(c) && !propio[pid]) {                                               /* P6d */
+            var cd = mioEn['t' + c.ts] || (commentsLoaded && cidDe[pid] && !(c.ts + DIA < (tsDe[pid] || 0)) ? cidDe[pid] : null);
+            if (cd && !(map[cd] && propio[map[cd]])) { c._pcid = cd; if (map[cd]) c._pcol = colOf(map[cd]); }   /* P6f: a un post propio, no */
+          }
+          /* el mío va con SU post, lleve el id que lleve; si su post no está en el muro, se aparca (no se pinta debajo de otro) */
+          var dest = c._pcid ? (map[c._pcid] || ('~' + c._pcid))
+            : (isOwnComment(c) && cidDe[pid] && c.ts + DIA < (tsDe[pid] || 0)) ? ('~' + pid) : pid;   /* P6d: un post MÁS NUEVO no es el suyo */
+          (merged[dest] || (merged[dest] = [])).push(c);
+        });
       });
       Object.keys(byPost).forEach(function (pid) {
         var arr = (merged[pid] || []).slice();
@@ -473,16 +596,8 @@
         merged[pid] = arr;
       });
       P.comments = merged;
-      try { P.emit(); } catch (e) {}
-    }, function (g) {
-      /* FB3 (coste Blaze): solo los COMMENTS_LIMIT comentarios más recientes de todo
-         el grupo. orderBy('createdAt') sobre un único campo no exige índice compuesto;
-         commentDoc siempre escribe createdAt. Si el SDK rechazara la query, onGroup
-         deja rastro en consola y degrada al grupo sin filtro. */
-      try { return g.orderBy('createdAt', 'desc').limit(COMMENTS_LIMIT); } catch (e) { return g; }
-    });
   }
-  function stopListenComments() { if (commentsUnsub) { try { commentsUnsub(); } catch (e) {} commentsUnsub = null; } }
+  function stopListenComments() { if (commentsUnsub) { try { commentsUnsub(); } catch (e) {} commentsUnsub = null; } commentDocs = []; commentsLoaded = false; }
 
   /* ---- engancha el store cuando exista y la sesión esté activa --------- */
   var hooked = false;
@@ -517,18 +632,20 @@
       var origAC = P.addComment.bind(P);
       P.addComment = function (postId, text) {
         var c = origAC(postId, text);
-        try { if (c) pushComment(postId, c); } catch (e) {}
+        try { if (c) { var pp = findPost(postId); if (pp && pp._cid) { c._pcid = pp._cid; c._pcol = pp._col || POSTS_COL; } pushComment(postId, c); } } catch (e) {}   /* P6f */
         return c;
       };
     }
     if (typeof P.deleteComment === 'function') {
       var origDC = P.deleteComment.bind(P);
       P.deleteComment = function (postId, ts) {
+        var arr0 = ((P.comments || {})[postId] || []), c0 = null;
+        for (var i0 = 0; i0 < arr0.length; i0++) if (arr0[i0] && arr0[i0].ts === ts) { c0 = arr0[i0]; break; }
         var okDel = origDC(postId, ts);
         try {
           if (okDel) {
-            var cid = cidById(postId);
-            if (cid) ST().del(colOf(postId) + '/' + cid + '/comments/' + commentDocId(ts));
+            var cid = (c0 && c0._pcid) || cidById(postId);
+            if (cid) ST().del(((c0 && c0._pcol) || colOf(postId)) + '/' + cid + '/comments/' + commentDocId(ts));
           }
         } catch (e) {}
         return okDel;
