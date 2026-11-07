@@ -88,7 +88,11 @@ function cfManualPatient() {
             : tr('Type the <strong>6-digit code</strong> we email you to confirm it\u2019s really you.'),
           tr('The setup assistant (onboarding) starts automatically — name, health details, where to find this user manual, and your first check-in.'),
           tr('On <strong>Your details</strong>, right above <strong>Continue</strong>, one line says what is stored (only what you write down), who can see it (only you) and that you can delete it from Settings whenever you want. Tick <strong>Yes, store my health data so the app can work</strong> and tap <strong>Continue</strong>: your details are saved only after that.')],
-        tip: tr('Signing in never creates an account by itself. If we don\u2019t recognise your email, we ask you to create an account first — so you never end up in an empty duplicate.') },
+        /* APPLE1 (3 Nov 2026, Apple's 1.2 on 1.0.9) — the same tip, word for word, + ONE
+           sentence: the terms line on the sign-in screen and on «Create your account»
+           (auth.jsx › CFTermsLine, drawn in every one of their views). The new key lives in
+           i18nmanual2026ar; the old one stays in its index tables (never pruned), unpainted. */
+        tip: tr('Signing in never creates an account by itself. If we don\u2019t recognise your email, we ask you to create an account first — so you never end up in an empty duplicate. On the sign-in screen and on <strong>Create your account</strong>, a short line links our Terms of Use and our Privacy Policy: by continuing, you accept them.') },
 
       /* CICLO 1.0.8i — LOGIN1: Apple / Google for real, through window.CFSocialAuth
          (auth.jsx › SocialBlock). Every claim checked against the code: only the
@@ -741,7 +745,10 @@ function cfManualPatient() {
       /* CICLO 1.0.8h — three new topics (strings in i18nmanual2026ap, every
          <strong> the live word of its language). «Post with a photo» only where
          the photo engine is (hasPhotos), «Posts from Chronic Friends» only where
-         CFOfficial is (hasOfficial). NO shot: no capture of the new wall yet. */
+         CFOfficial is (hasOfficial). NO shot: no capture of the new wall yet.
+         APPLE1 (3 Nov 2026, Apple's 1.4.1) — «Posts from Chronic Friends»: its body + ONE
+         sentence, rewritten in its slot of 2026ap: the sources of a post with health
+         information are listed under its text (postcard.jsx › CFPostSources). */
       { title: tr('Filter the wall'),
         where: [tr('Community'), tr('Posts')],
         body: tr('The button at the top of the wall names what you are reading: a condition and a language. Tap it and <strong>Filter posts</strong> opens. Under <strong>Condition</strong>, keep <strong>All conditions</strong> or choose only yours — the posts written for everyone stay too; what goes is the posts about other conditions. Under <strong>Language of the posts</strong>, choose one language or <strong>All languages</strong>. Tap <strong>See posts</strong> and the wall follows. At first it shows all conditions, in the language of your app.'),
@@ -756,7 +763,7 @@ function cfManualPatient() {
 
       ...(hasOfficial ? [{ title: tr('Posts from Chronic Friends'),
         where: [tr('Community'), tr('Posts')],
-        body: tr('Every day the <strong>Chronic Friends</strong> account shares a post with a picture on the Community wall, about one of the conditions of the app, and another in the Tools room, about one of its tools. You recognise them by the logo and the <strong>Official</strong> label next to the name. Each one reaches you once, in your language — even with <strong>All languages</strong> you see a single copy.'),
+        body: tr('Every day the <strong>Chronic Friends</strong> account shares a post with a picture on the Community wall, about one of the conditions of the app, and another in the Tools room, about one of its tools. You recognise them by the logo and the <strong>Official</strong> label next to the name. Each one reaches you once, in your language — even with <strong>All languages</strong> you see a single copy. When one of our posts shares health information, its sources are listed under the text: tap one to read it.'),
         problem: tr('A small daily dose of something useful, from the team that makes the app, in the place where you already read.'),
         tip: tr('They are not medical advice: always talk to your doctor about your health. You can save, copy or report them like any other post.') }] : []),
 
@@ -825,10 +832,15 @@ function cfManualPatient() {
          (reports.jsx) always knew targetType "user"; until now nothing
          opened it, so a census that publishes everyone's name and photo
          had no way to report anybody. Block is documented with it because
-         they are the same two buttons on the same card. */
+         they are the same two buttons on the same card.
+         APPLE1 (3 Nov 2026, Apple's 1.2 on 1.0.9) — the body rewritten in its slot of
+         i18nmanual2026w: the ⋯ of a post or a chat and the small buttons at the top of a
+         comment report or block too (screens.jsx: Report post · Block {name} · Report
+         {name} · Report comment, and the comment's new Block {name}); blocking lets our
+         team know (cf-moderation.js, listening to CFBlocks.block). No figure added. */
       { title: tr('Blocking or reporting a person'),
         where: [tr('Community'), tr('All people')],
-        body: tr('Open a person’s profile — from the list, from a post or from a comment — and under the friendship button there are two quiet buttons. <strong>Block user</strong> hides that person from you everywhere: their posts, their comments and their messages. It is always reversible, under <strong>Blocked users</strong> in <strong>Settings</strong>. <strong>Report user</strong> sends our team a reason — dangerous medical advice, harassment, spam or something else — and anything you want to add. The person is never told, and reporting does not hide them: if you also want them out of your app, block them as well.'),
+        body: tr('Open a person’s profile — from the list, from a post or from a comment — and under the friendship button there are two quiet buttons. You can also report or block from the ⋯ of a post or a chat, and from the small buttons at the top of a comment. <strong>Block user</strong> hides that person from you everywhere: their posts, their comments and their messages. It also lets our team know, so we can review what they shared. It is always reversible, under <strong>Blocked users</strong> in <strong>Settings</strong>. <strong>Report user</strong> sends our team a reason — dangerous medical advice, harassment, spam or something else — and anything you want to add. The person is never told, and reporting does not hide them: if you also want them out of your app, block them as well.'),
         problem: tr('Safety cannot wait for a friendship. Anyone whose name and photo you can see in the list, you can also block or report from that same card, without explaining yourself to anybody.'),
         tip: tr('Reporting is a safety tool, not an accusation — our team reads every report and decides what to do with it.') },
 
