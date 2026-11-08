@@ -1,8 +1,12 @@
 (function(){/* ===================================================================
    CONDITION-AWARE MEDICATION CATALOGUE — Phase 7b, DATA ONLY.
    • A LOGGING convenience, never a recommendation: no text here may
-     suggest, compare, rank or endorse; doses/strengths/frequencies are
-     FORM PRE-FILL DEFAULTS only, never dosing advice.
+     suggest, compare, rank or endorse. AUDIT1 §1 (7 Nov 2026, Apple 1.4.1):
+     activating an entry no longer copies its strength, dose, frequency,
+     times or «with food» — only the NAME (and the type) reach the form,
+     and the patient writes the rest from their prescription. The numbers
+     below stay as data, never dosing advice (the stock count may still
+     pre-fill the form, where it is seen and changed).
    • One entry per molecule; separate entries ONLY when the FORM/route
      differs (oral vs rectal vs topical vs ophthalmic vs inhaled).
    • conds[] uses exact SM_CONDITIONS names. otc/offLabel are neutral

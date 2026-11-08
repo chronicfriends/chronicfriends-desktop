@@ -122,9 +122,21 @@
        cf_reports_queue_v1 se queda FUERA a propósito: es una COLA de denuncias
        pendientes de enviar, y compartirla haría que dos móviles enviasen la misma. */
     'cf_blocked_v1', 'cf_muted_content_v1', 'cf_consent_v1', 'cf_health_consent_v1',
-    'cf_age_verified_v1'
+    'cf_age_verified_v1',
+
+    /* 🙋 AUDIT1 §16 (8 nov 2026 · decisión 14 de Gerhard del 5 nov · M53) — EL PERMISO DE LOS CORREOS: la casilla
+       SIN marcar de «Create account» y el interruptor de Ajustes (apagado de inicio) guardan aquí
+       { optIn, ts, source }. Viaja como los demás consentimientos: es la prueba de lo que la persona eligió, la sigue
+       en otro móvil y la lee el motor de correos (functions/mail-seq.js · conPermiso, y tools/campana-resena.mjs):
+       sin un optIn:true aquí no sale ningún correo de consejos ni de reseñas. Al ser una caja más, «Yes — log out
+       and remove my data from this computer» no la borra sin haberla subido (CFSync.unsynced la cuenta). */
+    'cf_email_consent_v1'
   ];
   var HEALTH_SET = {}; HEALTH_KEYS.forEach(function (k) { HEALTH_SET[k] = true; });
+  /* 🙋 AUDIT1 §16 · revisión 2.ª pasada (8 nov 2026, S1) — un PERMISO es UNA decisión: no se junta campo a campo como
+     el diario (ver resolve). Juntándolo, el «sí» de un móvil sin red y el «no» posterior del otro daban
+     { optIn: true } con la hora del «no»: un permiso que nadie dio, y el motor de correos mandaba. */
+  var CONSENT = { cf_email_consent_v1: true };
 
   var MAX_BYTES = 900000;               /* margen bajo el límite de 1 MiB/doc de Firestore */
   var META_KEY = 'cf_sync_meta_v1';     /* { caja: ts de la versión de la nube que es la base } (NO sube) */
@@ -461,6 +473,21 @@
     if (base === 'cf_onboarded_v1' && (L === '1' || Cl === '1')) return L === '1' ? { write: '1' } : { apply: Cl };
     if (!cloudMoved && (known || meta > 0)) return { write: L };         /* la nube sigue en la base: lo de aquí es lo nuevo */
     var Lo = parseObj(L), Co = parseObj(Cl);
+    /* 🙋 S1 · el permiso cambiado en los DOS lados (aquí y en la nube) no se junta: se queda UNA de las dos elecciones.
+       · si no coinciden, GANA EL «NO»: retirar el permiso tiene que valer siempre (RGPD art. 7.3) y la hora (ts) de
+         cada móvil puede estar mal, así que no decide; si el «sí» era lo último, la persona lo vuelve a marcar;
+       · si coinciden, la más reciente por su ts (sin ts, la regla de siempre); sin base, la de la nube;
+       · lo que no se entiende no se sube (si es lo de aquí, la nube; si es lo de la nube, lo de aquí).
+       Lo que pierde se guarda, como en cualquier choque, en cf_sync_conflicts_v1 (lost). */
+    if (CONSENT[base] && (Lo || Co)) {
+      if (!Lo) return { apply: Cl, lost: true };
+      if (!Co) return { write: L };
+      var lSi = Lo.optIn === true, cSi = Co.optIn === true;
+      if (lSi !== cSi) return lSi ? { apply: Cl, lost: true } : { write: L };
+      if (!known) return { apply: Cl, lost: true };
+      var lTs = typeof Lo.ts === 'number' ? Lo.ts : null, cTs = typeof Co.ts === 'number' ? Co.ts : null;
+      return ((lTs != null && cTs != null) ? lTs > cTs : localWins) ? { write: L } : { apply: Cl, lost: true };
+    }
     if (Lo && Co) {
       var st = { perdidos: 0 };
       var M = mergeLevel(known ? (loadMap(KEYS_KEY)[base] || null) : null, Lo, Co, localWins, loadMap(ALIAS_KEY)[base] || null, true, st);
@@ -797,6 +824,32 @@
     return vuelta();
   }
 
+  /* AUDIT1 §15 (8 nov 2026 · decisión 10 de Gerhard) — ¿queda en este aparato algo de ESTA cuenta que la nube
+     aún no tiene? Cuenta con el MISMO criterio que queueDirty (lo que se volvería a subir: una caja con otra
+     huella que su base, una caja sin huella, y una caja que la app borró aquí y la nube todavía tiene) y suma
+     lo que está en cola, subiendo o esperando otra vuelta. Solo MIRA: no cambia nada ni sube nada.
+     «Cerrar sesión y borrar mis datos de este ordenador» (CFAuthFB.logoutFull({ wipeDevice: true })) solo borra
+     con un 0. Si algo falla al mirar devuelve -1: quien llama lo trata como «no se sabe» y no borra. A propósito
+     NO usa scanLocal, que se traga los errores: un error a medias daría un 0 falso. */
+  function unsynced() {
+    try {
+      var n = Object.keys(pending).length + Object.keys(inflight).length + Object.keys(again).length;
+      var seen = {};
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || !isHealthKey(k) || !mine(k)) continue;
+        var b = baseOf(k);
+        seen[b] = true;
+        if (isDirty(b, safeGet(k)) !== false) n++;
+      }
+      Object.keys(loadMap(HASH_KEY)).forEach(function (base) {
+        if (!HEALTH_SET[base] || seen[base]) return;
+        if (safeGet(localKeyOf(null, base)) == null && isDirty(base, null) === true) n++;
+      });
+      return n;
+    } catch (e) { return -1; }
+  }
+
   /* vaciar lo pendiente antes de cerrar/ocultar la app; reintentar al volver o al recuperar la red */
   try {
     window.addEventListener('pagehide', function () { pushAll(); });
@@ -815,6 +868,8 @@
     active: active,
     /* sube YA todo lo cambiado aquí; devuelve una promesa (LOGOUT1 la espera, con tope) */
     pushNow: pushAll,
+    /* AUDIT1 §15: cuántas cajas de esta cuenta tienen aquí algo que la nube no tiene (0 = nada; -1 = no se sabe) */
+    unsynced: unsynced,
     _applyDown: applyDown
   };
   try { console.log('[CFSync] motor de salud cargado ·', HEALTH_KEYS.length, 'cajas en la lista blanca'); } catch (e) {}

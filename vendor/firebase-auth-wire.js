@@ -211,6 +211,106 @@
     } catch (e) { return Promise.resolve(); }
   }
 
+  /* AUDIT1 §15 (8 nov 2026 · decisión 10 de Gerhard del 5 nov · M18) — «Yes — log out and remove my data
+     from this computer». Lo pregunta la hoja de «Log out» de Claude Design SOLO en la web (en el móvil no
+     sale) y lo llama CFAuthFB.logoutFull({ wipeDevice: true }), que devuelve una promesa:
+       · { ok: false, reason: 'unsynced' } → queda algo de esta cuenta que la nube aún no tiene, o no se puede
+         saber: NO sale, NO borra nada y NO recarga (la hoja lo dice y la persona sigue dentro);
+       · { ok: false, reason: 'unsynced', signIn: true } → lo mismo, pero SIN sesión de nube: hay que volver a entrar;
+       · { ok: false, reason: 'busy' }     → ya hay un cierre de sesión en marcha (ese termina solo);
+       · si todo está en la nube: sale de Firebase, borra del aparato lo de esta cuenta y recarga ({ ok: true }).
+     El ORDEN importa:
+       0) SIN SESIÓN DE NUBE NO SE BORRA ('unsynced' en el acto). waitForPendingWrites solo ve la cola del usuario
+          ACTIVO y clearPersistence (abajo) vacía la de todos: lo que esta cuenta escribió sin red antes de perder la
+          sesión se tiraría sin que nadie lo sepa. Para borrar, hay que volver a entrar (revisión del 8 nov, H2);
+       1) subir lo pendiente con la cuenta aún puesta (como LOGOUT1): las cajas de salud, la baja de los correos
+          (CFMailPrefs) y las denuncias de la cola (cf-moderation); y DESPUÉS, esperar a Firestore, con tope;
+       2) mirar que NO queda nada sin subir: CFSync.unsynced() === 0 (las cajas de salud: suben con una
+          transacción, que waitForPendingWrites no ve), Firestore confirmó sus escrituras dentro del tope (lo
+          demás: perfil, posts, chat…) y no quedan la baja de correos ni denuncias en sus colas locales
+          (pendienteFuera). Sin Firebase o sin CFSync no se sabe → 'unsynced';
+       3) salir de Firebase y COMPROBAR que ya no hay sesión de nube. Con la sesión puesta, borrar aquí una caja
+          se apuntaría como «la app la borró» y la sincronización la borraría también en la NUBE. Si sigue
+          dentro → 'unsynced' (todavía no se ha borrado nada);
+       4) borrar lo de esta cuenta con wipeLocalAccount (el mismo de borrar la cuenta: su espacio cfns:, su
+          credencial, las fotos del diario, sus restos en los espejos compartidos y la caché de Firestore),
+          soltar la sesión local y recargar; la limpieza asíncrona espera como mucho 4 s, como en el borrado.
+       Las OTRAS pestañas abiertas de la web se recargan solas al desaparecer cf_auth_v1 (H3, al final del fichero).
+     🔴 Lo que vive SOLO en el aparato se borra para siempre con «Yes»: las fotos del diario fotográfico
+     (IndexedDB), los índices de actividad (cf_activity_v1, «device only» en design/activityindex.jsx), las copias
+     que perdieron un choque (cf_sync_conflicts_v1) y, de un médico, su perfil clínico (cf_doctor_v1). Es lo que
+     pide la persona («remove my data from this computer»); la hoja de Claude Design lo avisa.
+     Revisión independiente: auditorias/20261108-revision-audit1-logout/INFORME.md (H2-H6 aplicados aquí).
+     Banco: tools/tests/logout-wipe-harness.mjs (con su control y sus mutantes). */
+  var WIPE_SYNC_MS = 6000;                             /* tope para subir y confirmar antes de decidir */
+  var wiping = null;                                   /* la promesa del «Yes» en marcha (dos toques = la misma) */
+  /* REVISIÓN H2 y H4 (8 nov) — lo de esta cuenta que aún NO está en la nube y no es una caja de salud: la baja de
+     correos pendiente (CFMailPrefs: 'p:<uid>' en cf_mail_on_v1) y las denuncias de la cola de cf-moderation
+     (cf_reports_queue_v1: salen de ella solo cuando la nube contesta), con el mismo filtro que su subirCola.
+     Ante un error al mirar: true (no se borra). */
+  function pendienteFuera(cloudUid) {
+    try {
+      var m = JSON.parse(localStorage.getItem('cf_mail_on_v1') || 'null');
+      if (m && typeof m === 'object' && Object.keys(m).some(function (k) { return k.indexOf('p:') === 0; })) return true;
+    } catch (e) { return true; }
+    try {
+      var lu = (window.CFNS && CFNS.uid && CFNS.uid()) || null;
+      var q = JSON.parse(localStorage.getItem('cf_reports_queue_v1') || '[]');
+      if (Array.isArray(q) && q.some(function (d) {
+        return d && typeof d === 'object' && d.targetType && d.targetId != null && d.targetId !== '' &&
+          (!d.authorUid || d.authorUid === cloudUid || (lu && d.authorUid === lu));
+      })) return true;
+    } catch (e) { return true; }
+    return false;
+  }
+  function logoutAndWipe() {
+    if (wiping) return wiping;
+    if (logoutBusy) return Promise.resolve({ ok: false, reason: 'busy' });
+    var cloudUid = null;                               /* M15 bis: el uid de NUBE se apunta ANTES de salir */
+    try { var u0 = available() && FB().currentUser(); cloudUid = (u0 && u0.uid) || null; } catch (e) {}
+    /* 0) sin sesión de nube no se sabe. signIn: true (revisión S3) = lo que hace falta es VOLVER A ENTRAR, no la red; la
+       hoja de hoy solo mira reason (dice «Connect to the internet…»); el próximo encargo a CD lo usará. */
+    if (!cloudUid) return Promise.resolve({ ok: false, reason: 'unsynced', signIn: true });
+    logoutBusy = true;
+    var upTo = function (p, ms) {                      /* espera p, pero nunca más de ms */
+      return Promise.race([Promise.resolve(p).catch(function () {}), new Promise(function (r) { setTimeout(r, ms); })]);
+    };
+    /* la baja de los correos que aún no subió (CFMailPrefs la deja pendiente sin red): que salga ya, y así
+       la espera de Firestore de abajo también la cubre */
+    try { window.CFMailPrefs && typeof CFMailPrefs.refresh === 'function' && CFMailPrefs.refresh(); } catch (e) {}
+    /* REVISIÓN H4: y las denuncias de la cola (si no, salen a los 4 s de abrir la web) */
+    var denuncias = null;
+    try { denuncias = window.CFModeration && typeof CFModeration.flushQueue === 'function' && CFModeration.flushQueue(); } catch (e) {}
+    var subidas = null;
+    try { subidas = window.CFSync && CFSync.pushNow && CFSync.pushNow(); } catch (e) {}
+    var fsOk = false;                                  /* Firestore confirmó sus escrituras dentro del tope */
+    /* REVISIÓN H6: la foto de Firestore se saca DESPUÉS de subir (a los 250 ms fijos, lo que otro motor mandaba
+       mientras subían las cajas —el vigilante del chat, cada 1,5 s— no lo cubría y clearPersistence lo tiraba) */
+    var confirmar = Promise.all([subidas, denuncias]).then(null, function () {}).then(function () {
+      return window.firebase.firestore().waitForPendingWrites().then(function () { fsOk = true; });
+    });
+    wiping = upTo(confirmar, WIPE_SYNC_MS).then(function () {
+      var n = -1;
+      try { if (available() && window.CFSync && typeof CFSync.unsynced === 'function') n = CFSync.unsynced(); } catch (e) { n = -1; }
+      if (n !== 0 || !fsOk || pendienteFuera(cloudUid)) return false;   /* algo sin subir, o no se sabe: no se toca nada */
+      var out = null;
+      try { if (FB().currentUser()) out = FB().signOutFb(); } catch (e) { return false; }
+      return upTo(out, 1500).then(function () {
+        try { return !FB().currentUser(); } catch (e) { return false; }
+      });
+    }).then(null, function () { return false; }).then(function (fuera) {
+      if (fuera !== true) { logoutBusy = false; wiping = null; return { ok: false, reason: 'unsynced' }; }
+      var limpieza = null;
+      try { limpieza = wipeLocalAccount(cloudUid); } catch (e) {}
+      try { window.CFAuth && CFAuth.logout(); } catch (e) {}
+      return upTo(limpieza, 4000).then(function () {
+        try { location.reload(); } catch (e) {}
+        return { ok: true };
+      });
+    });
+    return wiping;
+  }
+
   var _pending = null;   /* {email, pw, credKey, role, mode:'fresh'|'returning', setSu} */
 
   /* ---- overlay "revisa tu correo" (DOM plano, reutiliza clases CSS) ---- */
@@ -751,8 +851,12 @@
          4) borrar la sesión local y recargar.
        Nunca se queda colgado: cada espera tiene tope y un fallo sigue adelante.
        Lo llama el botón de Claude Design (encargo 1.0.8k §3d); hasta entonces
-       el envoltorio de CFAuth.logout de abajo hace 1) y 3) sin esperar. */
-    logoutFull: function () {
+       el envoltorio de CFAuth.logout de abajo hace 1) y 3) sin esperar.
+       AUDIT1 §15 (8 nov 2026): con { wipeDevice: true } es «cerrar sesión y BORRAR mis datos de este
+       ordenador» (logoutAndWipe, arriba): devuelve una promesa y solo borra si todo llegó a la nube.
+       Sin opciones, lo de siempre. */
+    logoutFull: function (opts) {
+      if (opts && opts.wipeDevice) return logoutAndWipe();
       if (logoutBusy) return;
       logoutBusy = true;
       var done = false;
@@ -805,5 +909,16 @@
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wrapLogout);
   else wrapLogout();
+
+  /* REVISIÓN H3 (8 nov 2026, auditorias/20261108-revision-audit1-logout) — en la WEB, si OTRA pestaña cierra la
+     sesión (cf_auth_v1 desaparece, con «Yes» o con «No»), esta recarga. Si no, se quedaba enseñando los datos de la
+     persona y, al primer toque, una tienda en memoria (CFProfile, CFAuth…) los volvía a escribir en el ordenador;
+     CFAuth, incluso la sesión local. Lo que esta pestaña tuviera sin subir ya estaba en el localStorage compartido:
+     el «Yes» de la otra lo vio y lo subió antes de borrar. El aviso 'storage' solo llega a las OTRAS pestañas. */
+  try {
+    if (!window.ReactNativeWebView) window.addEventListener('storage', function (e) {
+      if (e && e.key === 'cf_auth_v1' && e.oldValue != null && e.newValue == null) { try { location.reload(); } catch (x) {} }
+    });
+  } catch (e) {}
   try { console.log('[CFAuthFB] cableado del login listo · Firebase available=' + available()); } catch (e) {}
 })();

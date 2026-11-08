@@ -67,6 +67,9 @@
 .ai-resdate{margin-top:8px;font-size:13px;font-weight:700;color:var(--rf-text-muted);}
 .ai-result .ai-prev{margin-top:10px;font-size:13px;}
 .ai-src{margin-top:8px;font-size:11px;font-weight:600;line-height:1.4;color:var(--rf-text-muted);opacity:.85;}
+/* AUDIT1 §5 — the source is a link: same size, the sheet's link colour (.ai-link), underlined */
+.ai-src-link{color:var(--rf-sage);font-weight:700;text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere;}
+.ai-src-link:hover{color:var(--rf-text);}
 .ai-soonbox{margin-top:8px;padding:18px 16px;border-radius:18px;background:var(--rf-raised);border:1px solid var(--rf-hairline);}
 .ai-soontag{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--rf-amber);}
 .ai-soontxt{margin:8px 0 0;font-size:13.5px;line-height:1.5;color:var(--rf-text-soft);}

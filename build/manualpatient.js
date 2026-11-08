@@ -150,7 +150,7 @@ function cfManualPatient() {
              the generic label (cfMyConditionLabel, modules.jsx). «Chronic
              illness» is quoted from i18nciclo105 in each language. */
           tr('The fourth of those boxes carries the name of the condition you follow \u2014 and simply <strong>Chronic illness</strong> when you follow several, or none.'),
-          tr('Set your <strong>country</strong> — when doctors and video visits arrive, it will decide which licensed doctors you can see and book.'),
+          tr('Set your <strong>country</strong>: <strong>Emergency information</strong> and <strong>Need to talk to someone now?</strong> then show the numbers for your country. When doctors and video visits arrive, it will also decide which licensed doctors you can see and book.'),
           tr('Check <strong>Membership</strong> to see your trial, or to manage or cancel your plan anytime.')],
         tip: tr('Part of every subscription is donated to research centres and hospitals fighting chronic diseases.') },
 
@@ -439,7 +439,7 @@ function cfManualPatient() {
         shot: 'IMG_6949.png',
         where: [tr('Medication')],
         body: tr('Keep every treatment in one place. The screen opens on a <strong>NEXT DOSE</strong> card with a live countdown, a one-tap <strong>Take now</strong> button and a ring showing how much of <strong>today</strong> is already taken. Below it, each medication shows its dose and schedule — and reminders <strong>ring like an alarm</strong> at the right time.'),
-        problem: tr('Long-term treatment is easy to slip on — a missed injection or a forgotten evening dose can undo weeks of progress. Reminders that genuinely ring keep your treatment on track without you having to remember.'),
+        problem: tr('Long-term treatment is easy to slip on: an injection every few weeks or an evening dose is easy to forget. Reminders that genuinely ring help you keep to your treatment without having to remember.'),
         steps: [
           tr('Open the <strong>Medication</strong> tab in the bottom bar.'),
           tr('Tap <strong>Add medication</strong> and enter name, dose and schedule.'),
@@ -452,6 +452,23 @@ function cfManualPatient() {
           tr('On each medicine, tap one of its times to log <strong>today</strong>’s dose: one tap marks it <strong>Taken</strong>, a second <strong>Skipped</strong>, a third leaves it unlogged again.'),
           tr('Several medicines at the same time ring as <strong>one</strong> alarm that lists them — tap <strong>I took them all</strong>, or <strong>Answer one by one</strong> to reply to each dose separately.')],
         tip: tr('A dose that changes every time, a treatment that steps down, or reminders that never arrive? The other guides in this chapter are about exactly that.') },
+
+      /* 🔴 AUDIT1 §1 (7 Nov 2026, Apple 1.4.1) — the catalogue gives only the
+         NAME: «Activate» opens «Add medication» with the name written in and
+         the rest empty (meds.jsx › activateEntry · MedFormSheet 'activate').
+         Every <strong> is a live label: Medication · Activate · Does this
+         treatment step down and end? · No, I take it ongoing · Dose · How
+         often? · Add medication · as prescribed · Edit medication (strings in
+         i18nmanual2026as). NO shot: no capture of the empty form exists yet. */
+      { title: tr('A medicine from the list starts empty'),
+        where: [tr('Medication')],
+        body: tr('Below your own medications there is a list of medicines for the conditions you follow \u2014 only their names. Tap <strong>Activate</strong> on the one you take: after <strong>Does this treatment step down and end?</strong>, the form opens with the name already written and the rest empty \u2014 <strong>Dose</strong>, <strong>How often?</strong> and the times. Write them exactly as your doctor prescribed them. Nothing rings until you tap <strong>Add medication</strong>, and a dose you leave empty reads <strong>as prescribed</strong>.'),
+        problem: tr('A dose written in by the app would read like a recommendation, and an alarm could ring every day with an amount that is not yours. The dose, how often and the times are your doctor\u2019s \u2014 Chronic Friends never suggests them.'),
+        steps: [
+          tr('In <strong>Medication</strong>, find your medicine in the list and tap <strong>Activate</strong>.'),
+          tr('Answer <strong>Does this treatment step down and end?</strong> \u2014 <strong>No, I take it ongoing</strong> opens the form.'),
+          tr('Write the dose, choose <strong>How often?</strong>, check the times and tap <strong>Add medication</strong>.')],
+        tip: tr('Close the form and nothing is added: the medicine waits in the list. A medicine you activated before keeps exactly what it has \u2014 open it with <strong>Edit medication</strong> to check it against your prescription.') },
 
       /* 🔴 MED22 (8 Sep 2026) — a non-daily medication no longer offers a dose
          on the six days it is not due. This topic is the patient-facing half
@@ -527,7 +544,7 @@ function cfManualPatient() {
       { title: tr('Which eye — and the bottle that empties twice as fast'),
         where: [tr('Medication')],
         body: tr('Eye drops arrive with <strong>no dose written in</strong>: how many drops, and in which eye, is your prescription — not something the app may assume. When you activate a drop, or edit it later, you pick <strong>Right eye</strong>, <strong>Left eye</strong>, <strong>Both eyes</strong> or <strong>Not specified</strong>, and nothing is selected for you. Whatever you choose then travels with the dose everywhere it is shown: the medication card, the alarm, the dose log and the PDF your ophthalmologist reads. Choose <strong>Both eyes</strong> and the app also counts <strong>two drops per dose</strong> against your bottle, because that is what really leaves it.'),
-        problem: tr('Anterior uveitis is usually one eye, so a pre-written \u201c1 drop each eye\u201d was the app stating a clinical fact you never gave it \u2014 the same reason your weight and age stay empty until you fill them in. And counting one drop when you use two is not a rounding error: the bottle runs out in half the time you were counting on \u2014 in the middle of a taper, with a weekend in between.'),
+        problem: tr('Drops are prescribed eye by eye, so a pre-written \u201c1 drop each eye\u201d was the app stating a clinical fact you never gave it \u2014 the same reason your weight and age stay empty until you fill them in. And counting one drop when you use two is not a rounding error: the bottle runs out in half the time you were counting on \u2014 in the middle of a taper, with a weekend in between.'),
         steps: [
           tr('Activate an eye drop, or open it and tap <strong>Which eye?</strong>'),
           tr('Pick the side your prescription says \u2014 or leave it <strong>Not specified</strong>.'),
@@ -559,7 +576,7 @@ function cfManualPatient() {
         shot: 'img-meditation-1018.png',
         where: [tr('Home'), tr('Meditation')],
         body: tr('A door for every mood, and behind each one a few quiet minutes: breathing that moves with you, grounding, gentle rituals for body, mind and spirit, and long pieces of zen music. Star your favourites to keep them at the top. Nothing here measures you — everything here holds you.'),
-        problem: tr('Stress and symptoms feed each other, yet most meditation apps demand streaks and stats — one more thing to fail at. This room asks nothing of you: open a door, take your minutes, leave whenever you like.'),
+        problem: tr('A hard day is heavy enough, yet most meditation apps demand streaks and stats — one more thing to fail at. This room asks nothing of you: open a door, take your minutes, leave whenever you like.'),
         steps: [
           tr('Open <strong>Meditation</strong> from its card on Home.'),
           tr('Pick a door — each one explains itself in a single line.'),
@@ -952,11 +969,17 @@ function cfManualPatient() {
           tr('If the switch goes back off by itself, the line underneath says why — no connection, not signed in, or an e-mail that is not verified yet — and nothing was published.')],
         tip: tr('Turning it off does not hide those details, it deletes them. And if you have not filled any of them in, the switch simply publishes nothing.') },
 
+      /* AUDIT1 §2 · §3 (7 Nov 2026) — the body and the tip say what «Emergency
+         information» shows now (settings.jsx › EmergencyDoc: the profile
+         country's number, then EU / US / UK, then the signs with their NHS
+         sources) and name «Help &amp; feedback» (the live row) instead of a
+         help centre; <strong> = the live labels (t('emergency') · tr('Help &
+         feedback')). Strings in i18nmanual2026as. */
       { title: tr('Language, help & emergencies'),
         where: [tr('Settings'), tr('Language')],
-        body: tr('Chronic Friends speaks <strong>16 languages</strong> — pick yours in Settings \u203a Language and the whole app switches instantly, including right-to-left layouts. The <strong>Help center</strong> answers common questions and reaches our care team, and <strong>Emergency info</strong> lists urgent-care numbers: <strong>112</strong> (EU) \u00b7 <strong>911</strong> (US) \u00b7 <strong>999</strong> (UK).'),
+        body: tr('Chronic Friends speaks <strong>16 languages</strong> \u2014 pick yours in Settings \u203a Language and the whole app switches instantly, including right-to-left layouts. <strong>Help &amp; feedback</strong> reaches the Chronic Friends team, and this manual answers the common questions. <strong>Emergency information</strong> shows first the emergency number of the country in your profile, then the numbers for the EU, the US and the UK, and the signs to get urgent medical help, with their sources.'),
         problem: tr('A health companion is useless in a language you don\u2019t think in — and dangerous if it pretends to handle emergencies. Chronic Friends meets you in your own language and is always clear about when to seek urgent care instead.'),
-        tip: tr('Chronic Friends can never contact emergency services for you. Severe pain, persistent vomiting, high fever or heavy bleeding \u2192 seek urgent care immediately.') },
+        tip: tr('Chronic Friends can never contact emergency services for you. <strong>Emergency information</strong> lists the signs to get urgent medical help, with links to the NHS pages they come from.') },
 
       /* CICLO 1.0.8b §10 (30 Sep 2026) — Settings › Help & feedback (feedback.jsx). Every
          <strong> is the live word of i18nciclo108b (the row, the three chips, the two

@@ -22,18 +22,33 @@
    principio del texto. Un chat es privado: solo su id, NUNCA el texto.
 
    NUNCA: avisar dos veces del mismo bloqueo, avisar al desbloquear, ni
-   bloquearse a uno mismo (eso ya lo impide CFBlocks). Sin Firestore, la
-   denuncia espera en la cola cf_reports_queue_v1 (la misma que usa
-   reports.jsx, que nadie vaciaba): flushQueue() la sube cuando hay sesión,
-   y solo las denuncias de la cuenta que está dentro.
+   bloquearse a uno mismo (eso ya lo impide CFBlocks). Cada denuncia se
+   guarda ANTES de mandarla en la cola cf_reports_queue_v1 (la misma que usa
+   reports.jsx) y sale de ella cuando la nube confirma: flushQueue() reintenta
+   las que quedan cuando hay sesión, y solo las de la cuenta que está dentro.
 
    Idempotente: cargarlo dos veces no envuelve dos veces.
    =================================================================== */
 /* 7 nov 2026 · REVISIÓN INDEPENDIENTE (auditorias/20261107-revision-apple1/INFORME.md), aplicada por el autor tras
    leerla: H1 (el uid local de la cuenta es CFNS.uid(); window.cfUid no existe en la app) · H3 (un id local o un correo
    NUNCA sale del móvil) · H4 (lo de un chat se mira PRIMERO) · H5 (otra pestaña u otro móvil ya lo bloqueó) · H6 (clip
-   sin medio emoji) · H7 (sesión de nube de otra persona → no se sube la cola) · H2-D (la cola se manda toda a la vez y
-   cada fallo vuelve en el acto). Marcas «REVISOR» en cada cambio. Partida: md5 f4204ca4. */
+   sin medio emoji) · H7 (sesión de nube de otra persona → no se sube la cola) · H2-D (la cola se manda toda a la vez).
+   Marcas «REVISOR» en cada cambio. Partida: md5 f4204ca4. */
+/* 7 nov 2026 · H2-A (decisión de Gerhard: «A»). Una denuncia «en vuelo» (sin red, add() no contesta) solo vivía en la
+   caché del SDK: sin IndexedDB (el iPhone la pierde al volver de segundo plano, [3718]) moría al cerrar la app
+   (b2-cola.mjs D y E). Ahora TODA denuncia —bloqueo, hoja «Report» y reintentos de la cola— se guarda en la cola ANTES
+   de mandarla, con una marca _q (solo local: nunca sube), y sale de la cola cuando la nube contesta ok. Lo que esta
+   apertura ya está mandando (vuelo[_q]) no se vuelve a mandar. PRECIO ACEPTADO: si el SDK también la guardó en su
+   IndexedDB, al volver la red llegan las dos y el equipo recibe el correo dos veces (functions/moderacion.js corta a 5
+   por persona y día). Marcas «H2-A». Partida: md5 9b881ca3. */
+/* 7 nov 2026 · PROPUESTA DEL REVISOR DE H2-A (auditorias/20261107-revision-h2a/INFORME.md), aplicada por el autor tras leerla línea a línea. Partida: el
+   borrador H2-A (md5 3578dc3c). Dos cambios, marcas «REVISOR H2A»:
+   · R1 · flushQueue espera a que el SDK no tenga nada pendiente (waitForPendingWrites) antes de reintentar la cola.
+     Con IndexedDB, cada apertura sin red le daba al SDK OTRA copia de lo que él ya guardaba: 3 aperturas → 3 copias
+     pendientes + la de la cola (bancos r1 y r3, este con el SDK de verdad). Así, como mucho 2: el precio aceptado.
+   · R2 · una entrada se reconoce por su _q o, si no lo tiene (las de la 1615), por su contenido. Antes había que
+     GUARDAR un _q nuevo para poder quitarla: con el móvil lleno no se guardaba y se mandaba en cada flush, sin fin
+     (banco r2). */
 (function () {
   'use strict';
   if (window.CFModeration) return;
@@ -41,6 +56,7 @@
   var QUEUE_KEY = 'cf_reports_queue_v1';
   var REASON = 'Blocked user';
   var SNIPPET = 400;
+  var MAXQ = 200;
 
   function myUid() {
     try { if (window.CFStore && typeof CFStore.uid === 'function') { var u = CFStore.uid(); if (u) return u; } } catch (e) {}
@@ -91,49 +107,79 @@
   /* M12 (auditoría del 5 nov 2026): una denuncia hecha desde la hoja «Report» (design/reports.jsx)
      que no llegaba a la nube (sin sesión, correo sin verificar, interruptor de solo lectura) se
      PERDÍA, y la pantalla decía «la revisaremos». Se envuelve CFStore.colAdd SOLO para 'reports':
-     si no sale, va a la cola y flushQueue la reintenta. Lo que escribe este motor ya gestiona su
-     cola (propio = true mientras llama). Banco: tools/tests/reporte-cola-harness.mjs */
+     H2-A: va a la cola ANTES de mandarla y sale cuando la nube contesta ok; si no, flushQueue la
+     reintenta. Lo que escribe este motor ya gestiona su cola (propio = true mientras llama).
+     Banco: tools/tests/reporte-cola-harness.mjs */
   var propio = false;
   function colAddPropio(doc) {
     propio = true;
     try { return CFStore.colAdd('reports', doc); } finally { propio = false; }
   }
+
+  /* H2-A: la cola. Cada entrada lleva _q (un id que nunca sale del móvil); vuelo = lo que esta apertura ya está
+     mandando y todavía no ha contestado (sin red, add() no contesta nunca) */
+  var vuelo = {};
+  function nuevoQ() { return 'q' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8); }
+  function leerCola() {
+    try { var q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); return Array.isArray(q) ? q : []; } catch (e) { return []; }
+  }
+  function guardarCola(q) {
+    try { localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-MAXQ))); return true; } catch (e) { return false; }
+  }
+  /* guarda una COPIA (createdAt en milisegundos) y devuelve su _q; null si no se pudo guardar */
+  function encolar(doc) {
+    var d = {}; for (var k in doc) d[k] = doc[k];
+    var c = doc.createdAt;
+    d.createdAt = (c && typeof c.getTime === 'function') ? c.getTime() : (typeof c === 'number' ? c : Date.now());
+    d._q = nuevoQ();
+    var q = leerCola(); q.push(d);
+    return guardarCola(q) ? d._q : null;
+  }
+  /* REVISOR H2A (R2): la clave de una entrada es su _q; las de antes de H2-A (1615, sin _q) se reconocen por su
+     CONTENIDO, sin tener que guardar nada (con el móvil lleno, un _q nuevo no se guardaba y quitar no la encontraba) */
+  function clave(d) {
+    if (!d || typeof d !== 'object') return null;
+    if (typeof d._q === 'string' && d._q) return d._q;
+    try { return 'v' + JSON.stringify([d.createdAt, d.targetType, d.targetId, d.reason, d.details, d.authorUid]); } catch (e) { return null; }
+  }
+  /* la nube confirmó: fuera de la cola */
+  function quitar(qid) {
+    if (!qid) return;
+    var q = leerCola(), r = q.filter(function (d) { return clave(d) !== qid; });      /* REVISOR H2A (R2) */
+    if (r.length !== q.length) guardarCola(r);
+  }
+  /* manda; si la nube contesta ok, la quita de la cola; si no, se queda para flushQueue */
+  function mandar(doc, qid) {
+    if (qid) vuelo[qid] = true;
+    var p;
+    try { p = colAddPropio(doc); } catch (e) { p = { ok: false, code: 'exception' }; }
+    return Promise.resolve(p).then(function (r) {
+      if (qid) delete vuelo[qid];
+      if (r && r.ok === false) return { ok: false, queued: !!qid, code: r.code };
+      quitar(qid);
+      return r || { ok: true };
+    }, function () { if (qid) delete vuelo[qid]; return { ok: false, queued: !!qid }; });
+  }
+
   function wrapStore() {
     var S = window.CFStore;
     if (!S || typeof S.colAdd !== 'function') return false;
     if (S.__cfReportQueue) return true;
     var orig = S.colAdd;
     S.colAdd = function (col, doc) {
-      var p = orig.apply(this, arguments);
-      if (col !== 'reports' || propio) return p;
-      return Promise.resolve(p).then(function (r) { if (r && r.ok === false) encolar(doc); return r; },
-                                     function (e) { encolar(doc); throw e; });
+      if (col !== 'reports' || propio || !doc || typeof doc !== 'object') return orig.apply(this, arguments);
+      var qid = encolar(doc);                                   /* H2-A: a la cola ANTES de mandarla */
+      if (qid) vuelo[qid] = true;
+      var p;
+      try { p = orig.apply(this, arguments); } catch (e) { if (qid) delete vuelo[qid]; throw e; }
+      return Promise.resolve(p).then(function (r) {
+        if (qid) delete vuelo[qid];
+        if (!(r && r.ok === false)) quitar(qid);
+        return r;
+      }, function (e) { if (qid) delete vuelo[qid]; throw e; });
     };
     S.__cfReportQueue = true;
     return true;
-  }
-
-  function escribir(doc) {
-    try {
-      if (window.CFStore && typeof CFStore.colAdd === 'function') {
-        return Promise.resolve(colAddPropio(doc)).then(function (r) {
-          if (r && r.ok === false) { encolar(doc); return { ok: false, queued: true, code: r.code }; }
-          return r || { ok: true };
-        }, function () { encolar(doc); return { ok: false, queued: true }; });
-      }
-    } catch (e) {}
-    encolar(doc);
-    return Promise.resolve({ ok: false, queued: true });
-  }
-  function encolar(doc) {
-    try {
-      var q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-      if (!Array.isArray(q)) q = [];
-      var d = {}; for (var k in doc) d[k] = doc[k];
-      d.createdAt = (doc.createdAt instanceof Date) ? doc.createdAt.getTime() : (doc.createdAt || Date.now());
-      q.push(d);
-      localStorage.setItem(QUEUE_KEY, JSON.stringify(q.slice(-200)));
-    } catch (e) {}
   }
 
   /* la denuncia de un bloqueo nuevo */
@@ -150,20 +196,30 @@
       details: clip((who ? 'Blocked user name: ' + who + ' · ' : '') + contexto(x), 2000),
       createdAt: new Date()
     };
-    if (!me) { encolar(doc); return Promise.resolve({ ok: false, queued: true }); }
-    return escribir(doc);
+    var qid = encolar(doc);                                     /* H2-A: a la cola ANTES de mandarla */
+    if (!me || !(window.CFStore && typeof CFStore.colAdd === 'function')) return Promise.resolve({ ok: false, queued: !!qid });
+    return mandar(doc, qid);
   }
 
   /* sube la cola SOLO con las denuncias de la cuenta que está dentro (las demás se quedan) */
-  var flushing = false;
   function flushQueue() {
-    if (flushing) return Promise.resolve({ sent: 0 });
     var me = myUid();
     if (!me || !(window.CFStore && typeof CFStore.colAdd === 'function')) return Promise.resolve({ sent: 0 });
-    var q;
-    try { q = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]'); } catch (e) { q = []; }
-    if (!Array.isArray(q) || !q.length) return Promise.resolve({ sent: 0 });
-    /* reports.jsx encola con el uid LOCAL de la cuenta (cfUid) si no había nube: también es «mío».
+    if (!leerCola().length) return Promise.resolve({ sent: 0 });
+    /* REVISOR H2A (R1): con IndexedDB, lo que el SDK no pudo mandar sigue en SU cola y sale solo al volver la red.
+       Dárselo otra vez en cada apertura sin red apilaba una copia más por apertura. Se reintenta cuando el SDK ya no
+       tiene nada pendiente: sin red y con algo pendiente, waitForPendingWrites no contesta (la denuncia sigue en
+       esta cola, que sobrevive a cerrar la app); sin nada pendiente, contesta en el acto. Si falla, se sigue igual. */
+    var espera = null;
+    try { if (CFStore.db && typeof CFStore.db.waitForPendingWrites === 'function') espera = CFStore.db.waitForPendingWrites(); } catch (e) { espera = null; }
+    return Promise.resolve(espera).then(subirCola, subirCola);
+  }
+  function subirCola() {
+    var me = myUid();
+    if (!me || !(window.CFStore && typeof CFStore.colAdd === 'function')) return { sent: 0 };
+    var q = leerCola();
+    if (!q.length) return { sent: 0 };
+    /* reports.jsx encola con el uid LOCAL de la cuenta si no había nube: también es «mío».
        Ese uid local nunca sale del móvil: al subir, authorUid es SIEMPRE el uid de nube. */
     /* REVISOR: window.cfUid NO existe en la app (posts.js lo deja dentro de su función): el uid LOCAL de esta cuenta
        es CFNS.uid(); la cola vive en el espacio de ESTA cuenta (parche CFNS), así que lo que lleva su uid local es suyo */
@@ -171,38 +227,30 @@
     try { local = typeof window.cfUid === 'function' ? cfUid() : (window.CFNS && typeof CFNS.uid === 'function' ? CFNS.uid() : null); } catch (e) {}
     if (local === 'anon') local = null;
     /* REVISOR: sesión de nube de OTRA persona que la cuenta de dentro (huérfana, antes de que SEC22 la cierre) → nada */
-    if (otraPersona()) return Promise.resolve({ sent: 0 });
-    var mias = [], otras = [];
-    q.forEach(function (d) { (d && (d.authorUid === me || (local && d.authorUid === local) || !d.authorUid) ? mias : otras).push(d); });
-    if (!mias.length) return Promise.resolve({ sent: 0 });
-    flushing = true;
-    try { localStorage.setItem(QUEUE_KEY, JSON.stringify(otras)); } catch (e) {}
+    if (otraPersona()) return { sent: 0 };
+    /* REVISOR H2A (R2): las que se encolaron antes de H2-A (o reports.jsx sin CFStore) no llevan _q: clave() las
+       reconoce por su contenido, así que ya no se les escribe un _q (con el móvil lleno no se guardaba) */
+    var mias = q.filter(function (d) {
+      return d && typeof d === 'object' && clave(d) && !vuelo[clave(d)] && (d.authorUid === me || (local && d.authorUid === local) || !d.authorUid);
+    });
+    if (!mias.length) return { sent: 0 };
     var sent = 0, fallan = 0;
-    function devolver(d) {   /* REVISOR: la que falla vuelve a la cola EN EL ACTO (la app puede cerrarse antes del final) */
-      fallan++;
-      try {
-        var ahora = JSON.parse(localStorage.getItem(QUEUE_KEY) || '[]');
-        localStorage.setItem(QUEUE_KEY, JSON.stringify((Array.isArray(ahora) ? ahora : []).concat([d]).slice(-200)));
-      } catch (e) {}
-    }
-    /* REVISOR: TODAS a la vez, no en fila: sin red la 1.ª no contesta nunca y las demás no llegaban ni a la cola del SDK */
+    /* REVISOR (H2-D): TODAS a la vez, no en fila: sin red la 1.ª no contesta nunca y las demás no llegaban ni a la
+       cola del SDK. H2-A: cada una sigue en la cola hasta que la nube contesta ok */
     return Promise.all(mias.map(function (d) {
-      return (function () {
-        var doc = {
-          authorUid: me,
-          targetType: String(d.targetType || ''),
-          targetId: String(d.targetId == null ? '' : d.targetId).slice(0, 200),
-          reason: String(d.reason || '').slice(0, 120),
-          details: String(d.details || '').slice(0, 2000),
-          createdAt: new Date(typeof d.createdAt === 'number' ? d.createdAt : Date.now())
-        };
-        if (!doc.targetType || !doc.targetId) return null;
-        return Promise.resolve(colAddPropio(doc)).then(function (r) {
-          if (r && r.ok === false) devolver(d); else sent++;
-        }, function () { devolver(d); });
-      })();
+      var k = clave(d);                                                       /* REVISOR H2A (R2) */
+      if (vuelo[k]) return null;               /* REVISOR H2A (R2): dos entradas idénticas de la 1615 → una sola vez */
+      var doc = {
+        authorUid: me,
+        targetType: String(d.targetType || ''),
+        targetId: String(d.targetId == null ? '' : d.targetId).slice(0, 200),
+        reason: String(d.reason || '').slice(0, 120),
+        details: String(d.details || '').slice(0, 2000),
+        createdAt: new Date(typeof d.createdAt === 'number' ? d.createdAt : Date.now())
+      };
+      if (!doc.targetType || !doc.targetId) { quitar(k); return null; }         /* nunca podría subir */
+      return mandar(doc, k).then(function (r) { if (r && r.ok === false) fallan++; else sent++; });
     })).then(function () {
-      flushing = false;
       return { sent: sent, failed: fallan };
     });
   }
@@ -241,7 +289,7 @@
     return true;
   }
 
-  window.CFModeration = { version: 'apple1-20261107', notifyBlock: notifyBlock, flushQueue: flushQueue, _contexto: contexto };
+  window.CFModeration = { version: 'apple1-20261107-h2a', notifyBlock: notifyBlock, flushQueue: flushQueue, _contexto: contexto };
 
   if (!wrap()) {
     var n = 0;
