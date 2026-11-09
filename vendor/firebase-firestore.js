@@ -260,18 +260,20 @@
 
     /* escucha una colección/consulta; cb(arrayDeDocs con _id). Devuelve unsub.
        queryFn opcional: recibe la colección y devuelve una query (where/orderBy). */
-    onCol: function (path, cb, queryFn) {
+    onCol: function (path, cb, queryFn, opts) {
       try {
         var q = colRef(path);
         if (typeof queryFn === 'function') { try { q = queryFn(q) || q; } catch (e) {} }
-        return q.onSnapshot(
-          function (snap) {
-            var out = [];
-            snap.forEach(function (d) { var o = d.data() || {}; o._id = d.id; out.push(o); });
-            try { cb(out, snap); } catch (e) {}
-          },
-          function () {}
-        );
+        var next = function (snap) {
+          var out = [];
+          snap.forEach(function (d) { var o = d.data() || {}; o._id = d.id; out.push(o); });
+          try { cb(out, snap); } catch (e) {}
+        };
+        /* M2 (2.ª revisión de los motores v3.7, 8 nov 2026): con persistencia, la PRIMERA foto sale de la caché del aparato
+           y, si el servidor trae lo mismo, el SDK no avisa otra vez. Con includeMetadataChanges avisa también cuando la foto
+           pasa a ser del servidor sin cambiar nada (snap.metadata.fromCache: true → false). Solo lo pide firebase-sync.js. */
+        if (opts && opts.includeMetadataChanges) return q.onSnapshot({ includeMetadataChanges: true }, next, function () {});
+        return q.onSnapshot(next, function () {});
       } catch (e) { return function () {}; }
     },
 

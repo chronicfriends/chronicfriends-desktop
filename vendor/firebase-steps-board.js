@@ -231,6 +231,7 @@
 
   function setEnabled(on) {
     escribir(ON_KEY, { on: !!on, ts: now() });
+    visto = !!on;                                /* A5: lo decidido AQUÍ no es un cambio que llega de la nube */
     try { window.dispatchEvent(new CustomEvent('cf-steps-board')); } catch (e) {}
     if (!on) return borrar();
     return sync();
@@ -273,6 +274,9 @@
     var t = totales(dias);
     var k = claves(null);
     return miPerfil().then(function (p) {
+      /* M2 (2.ª revisión): leer la ficha tarda; si entretanto llegó un «fuera» (de la nube o de esta misma pantalla), esta
+         escritura saldría DESPUÉS del borrado y dejaría la fila publicada. Se vuelve a mirar antes de escribir. */
+      if (!active() || !enabled() || uid() !== me) return { ok: false, code: 'off' };
       var name = ((p && p.name) || '').toString().trim().slice(0, 80);
       /* sin nombre público no se publica: una fila sin nombre en una tabla no
          le dice nada a nadie y sólo engorda la colección */
@@ -363,8 +367,13 @@
   }
 
   /* ---- arranque --------------------------------------------------------- */
+  /* A5 + 2.ª revisión (M2): con el motor de sync, un «dentro» no publica antes de ver una foto DEL SERVIDOR de esta sesión
+     (la primera suele salir de la caché del aparato, con lo que vio la última vez: si otro aparato salió del torneo, aquí
+     aún diría «dentro»). Lo del arranque lo hace revisar(), abajo. Un «fuera» se obedece con cualquier foto. */
+  var nubeVista = false;
+  function esperaNube() { return !!window.CFSync && !nubeVista; }
   function start() {
-    if (!active()) return;
+    if (!active() || esperaNube()) return;
     if (enabled() && hasSteps()) sync();
   }
   function stop() {}
@@ -383,9 +392,44 @@
 
   window.CFStepsBoard = API;
 
-  try { if (CF() && CF().onState) CF().onState(function () { start(); }); } catch (e) {}
+  /* 🙋 A5 (revisión de la Política v3.7, 8 nov 2026) — EL INTERRUPTOR VIAJA CON LA CUENTA: firebase-sync.js lo sube y lo
+     baja (HEALTH_KEYS + CONSENT: si dos aparatos chocan, gana el «no»). Si llega de la nube un interruptor distinto del
+     de aquí, se obedece en el acto: apagado en otro aparato → se BORRA mi fila (antes este aparato la volvía a crear con
+     cada dato de Salud); encendido → se publica. La hoja se repinta con 'cf-steps-board'.
+     Banco: tools/tests/permisos-aparatos-harness.mjs. */
+  /* 2.ª revisión (M1): con «fuera», retirar nunca hace daño. Al cambiar a «fuera» se borra la fila; y una vez por sesión,
+     al ver el servidor, se MIRA si queda una fila mía (una lectura), por si este aparato perdió un choque en otra sesión o
+     otro aparato —uno con la versión de antes— la volvió a crear: si está, se borra. Solo quien decidió alguna vez
+     (la caja existe); quien nunca entró no gasta ni la lectura. */
+  function decidido() { return leer(ON_KEY) !== null; }
+  function quitarSiQueda() {
+    var me = uid();
+    if (!me || !ST() || typeof ST().get !== 'function') return;
+    Promise.resolve(ST().get(COL + '/' + me)).then(function (d) {
+      if (d && !enabled() && active() && uid() === me) borrar();
+    }, function () {});
+  }
+  var visto = enabled();
+  /* servidor = la foto es del servidor (o un choque que el motor de sync acaba de decidir leyendo la nube: 'cf-sync-permiso'
+     no cuenta como foto entera, así que no marca «ya he visto la nube») */
+  function revisar(servidor, foto) {
+    var e = enabled(), cambio = e !== visto, primera = foto && servidor && !nubeVista;
+    visto = e;
+    if (foto && servidor) nubeVista = true;
+    if (cambio) { try { window.dispatchEvent(new CustomEvent('cf-steps-board')); } catch (x) {} }
+    if (!active()) return;
+    if (!e) {
+      if (cambio) borrar();
+      else if (primera && decidido()) quitarSiQueda();
+      return;
+    }
+    if (nubeVista && (cambio || primera) && hasSteps()) sync();
+  }
+  try { window.addEventListener('cf-sync-cloud', function (ev) { revisar(!(ev && ev.detail && ev.detail.fromCache === true), true); }); } catch (e) {}
+  try { window.addEventListener('cf-sync-permiso', function (ev) { if (!ev || !ev.detail || ev.detail.key === ON_KEY) revisar(true, false); }); } catch (e) {}
+  try { if (CF() && CF().onState) CF().onState(function () { visto = enabled(); nubeVista = false; start(); }); } catch (e) {}
   /* cada vez que el teléfono manda datos nuevos, se republica */
-  try { window.addEventListener('cf-hs-changed', function () { if (enabled() && hasSteps()) sync(); }); } catch (e) {}
+  try { window.addEventListener('cf-hs-changed', function () { if (!esperaNube() && enabled() && hasSteps()) sync(); }); } catch (e) {}
   try { start(); } catch (e) {}
 
   /* GAM3 (25 sep 2026) — LA HOJA ABIERTA SE REFRESCA SOLA. La hoja del torneo

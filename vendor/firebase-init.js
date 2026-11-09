@@ -360,21 +360,20 @@
      · set(on) lo guarda ya en el móvil, avisa con 'cf-mail-prefs' (la fila se repinta) y lo sube; sin
        red, sin sesión o con el correo sin verificar (las reglas lo exigen) queda PENDIENTE y se sube al
        volver la sesión o la app. Lo pendiente manda sobre lo leído de la nube: es lo último que dijo.
-     · Lee la nube al tener sesión y al volver a la app (otro móvil pudo cambiarlo, o el enlace del pie). */
+     · Lee la nube al tener sesión y al volver a la app (otro móvil pudo cambiarlo, o el enlace del pie).
+     🔕 POLÍTICA v3.7 (8 nov 2026, Historial CF [4205]+) — UN SOLO INTERRUPTOR DE CORREOS: «Tips & review requests by
+     email» (Claude Design, AUDIT1 §16: la caja cf_email_consent_v1, apagada hasta que la persona la enciende). La fila
+     vieja «Emails about the app» decía «encendidos» sin que nadie los pidiera, y salían las dos en Ajustes. Desde
+     hoy este motor ya NO ofrece get() ni set(): sin ellos, la fila vieja y su tema del manual no se dibujan
+     (feedback.jsx cfMailPrefsApi y manualpatient.jsx hasMailPrefs piden los dos). Queda solo refresh(): sube una
+     baja que una versión anterior dejó PENDIENTE sin red ('p:<uid>' en cf_mail_on_v1), y la usa el cierre de
+     sesión de firebase-auth-wire.js antes de borrar. Ya no lee la nube: nadie pinta ese estado.
+     Banco: tools/tests/mail-prefs-harness.mjs (v3.7). */
   (function () {
     var LS = 'cf_mail_on_v1';                         /* { "<uid>": bool (lo sabido), "p:<uid>": bool (pendiente de subir) } */
     var subiendo = false;
     function leer() { try { var o = JSON.parse(localStorage.getItem(LS)); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; } }
     function guardar(o) { try { localStorage.setItem(LS, JSON.stringify(o)); } catch (e) {} }
-    function avisar() { try { window.dispatchEvent(new Event('cf-mail-prefs')); } catch (e) {} }
-    function get() {
-      var u = auth.currentUser;
-      if (!u) return true;
-      var m = leer();
-      if (typeof m['p:' + u.uid] === 'boolean') return m['p:' + u.uid];
-      if (typeof m[u.uid] === 'boolean') return m[u.uid];
-      return true;
-    }
     function subir() {
       var u = auth.currentUser, store = window.CFStore;
       if (subiendo || !u || !u.emailVerified || !store || !store.available || typeof store.set !== 'function') return Promise.resolve({ ok: false, code: 'pendiente' });
@@ -393,34 +392,15 @@
         return { ok: true };
       }, function () { subiendo = false; return { ok: false, code: 'error' }; });
     }
-    function set(on) {
-      var u = auth.currentUser;
-      if (!u) return Promise.resolve({ ok: false, code: 'no-current-user' });
-      on = !!on;
-      var m = leer();
-      m['p:' + u.uid] = on;
-      guardar(m);
-      avisar();
-      return subir();
-    }
     function refrescar() {
       var u = auth.currentUser, store = window.CFStore;
-      if (!u || !u.emailVerified || !store || !store.available || typeof store.get !== 'function') return;
-      var uid = u.uid;
-      if (typeof leer()['p:' + uid] === 'boolean') { subir(); return; }
-      var leido;
-      try { leido = store.get('users/' + uid + '/private/mail'); } catch (e) { return; }
-      Promise.resolve(leido).then(function (d) {
-        var u2 = auth.currentUser;
-        if (!u2 || u2.uid !== uid || typeof leer()['p:' + uid] === 'boolean') return;
-        var on = !(d && d.unsub === true);
-        var m = leer();
-        if (m[uid] !== on) { m[uid] = on; guardar(m); avisar(); }
-      }).catch(function () {});
+      if (!u || !u.emailVerified || !store || !store.available || typeof store.set !== 'function') return Promise.resolve({ ok: false, code: 'pendiente' });
+      if (typeof leer()['p:' + u.uid] !== 'boolean') return Promise.resolve({ ok: true });
+      return subir();
     }
-    try { window.addEventListener('cf-auth-changed', function () { avisar(); setTimeout(refrescar, 1500); }); } catch (e) {}
+    try { window.addEventListener('cf-auth-changed', function () { setTimeout(refrescar, 1500); }); } catch (e) {}
     try { document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') refrescar(); }); } catch (e) {}
-    window.CFMailPrefs = { get: get, set: set, refresh: refrescar };
+    window.CFMailPrefs = { refresh: refrescar };
   })();
 
   try { console.log('[CFFirebase] listo · proyecto', firebaseConfig.projectId, '· available=true'); } catch (e) {}

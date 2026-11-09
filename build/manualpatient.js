@@ -22,8 +22,9 @@ function cfManualPatient() {
      render), never when this file loads — the layer arrives separately, from
      webapp/vendor/. A phone without it would read about a button it cannot see. */
   const canTranslate = !!(window.CFPostTr && typeof window.CFPostTr.get === 'function');
-  /* CICLO 1.0.8b §17 — the same rule for the educational e-mails: the switch is drawn
-     only where window.CFMailPrefs exists (the mail engine), so its topic is too. */
+  /* POL37 Part D (9 Nov 2026) — the topic «How to stop the emails» (CICLO 1.0.8b §17, drawn only
+     where window.CFMailPrefs existed) is gone with its Settings row: the one e-mail switch is
+     «Tips & review requests by email» and its own topic (AUDIT1 §16). */
   /* CICLO 1.0.8h — the same rule for the photos of a post (window.CFPostPhotos,
      available === true) and for the official account's posts (window.CFOfficial):
      a phone without the engine never reads about something it cannot show. */
@@ -32,7 +33,11 @@ function cfManualPatient() {
   /* CICLO 1.0.8i §7/§9 — «Sign in with Apple or Google» only where the engine
      (window.CFSocialAuth) reports at least one provider, asked at every paint. */
   const hasSocial = !!(window.cfSocialProviders ? cfSocialProviders().length : (window.CFSocialAuth && window.CFSocialAuth.available && (window.CFSocialAuth.available.apple === true || window.CFSocialAuth.available.google === true)));
-  const hasMailPrefs = !!(window.cfMailPrefsApi ? cfMailPrefsApi() : (window.CFMailPrefs && typeof window.CFMailPrefs.get === 'function' && typeof window.CFMailPrefs.set === 'function'));
+  /* AUDIT1 §8 (8 Nov 2026) — «until when your reminders are scheduled» only where the phone has said it
+     (a health snapshot carrying lastAt — the native build to come); before that the line is not drawn. */
+  const hasLastAt = !!(window.CFNotifHealth && CFNotifHealth.get && CFNotifHealth.get() && CFNotifHealth.get().lastAt);
+  /* AUDIT1 §15 — the «shared or public computer?» question exists only on the web (no phone shell) */
+  const isWeb = !window.ReactNativeWebView;
   /* CICLO 1.0.8l §2 — the real sign-up engine (window.CFAuthFB.signUp — the very test
      auth.jsx › startSignup makes) confirms a new e-mail account with a LINK: the notice says
      «Check your inbox», and back in the app it notices by itself and lets the person in.
@@ -57,7 +62,7 @@ function cfManualPatient() {
         /* CICLO 1.0.8k §3c — the shot came OFF: img-consent.png is the health-data screen of
            step 0.5, which no longer exists (the file stays in assets/manual/). It waits for a
            fresh capture of «Your details» with its consent box. */
-        body: tr('Your account is your own private space. It safely keeps your journal, medications, Flare Radar and friends, and lets you sign in from any device without losing anything.'),
+        body: tr('Your account is your own private space. It safely keeps your journal, medications, Flare Radar and friends, so you find them again when you sign in on another device. A few things stay only on the phone where you made them: the photos of your Photo diary, the results of the activity scores (HBI, PHQ-9…) and some settings of that phone, such as the language and the journal reminder.'),
         problem: tr('Life with a chronic illness scatters your health story across memory, sticky notes and half-remembered appointments. One secure account gathers it in a single place that is always with you.'),
         /* CICLO 1.0.8j §2 — the role picker left the sign-in screen on 15 Aug
            (auth.jsx): step 1 says what opening the app shows (LoginLangPicker ·
@@ -81,8 +86,8 @@ function cfManualPatient() {
         steps: [
           tr('Open the app: you arrive at the sign-in screen, with the Chronic Friends logo on green and a white panel below it. The button with the globe, at the top, changes the language.'),
           hasSocial
-            ? tr('At the top of the white panel, tap <strong>Create your account</strong>. Its page starts with <strong>Continue with Apple</strong> and <strong>Continue with Google</strong> — only the ones your phone offers; under them, enter your email and a password of at least <strong>6 characters</strong>. The first time on this phone, the app asks whether you are an adult: tap <strong>Yes, I’m 18 or older</strong>.')
-            : tr('At the top of the white panel — just above <strong>Welcome back</strong> — tap <strong>Create your account</strong>, then enter your email and a password of at least <strong>6 characters</strong>. The first time on this phone, the app asks whether you are an adult: tap <strong>Yes, I’m 18 or older</strong>.'),
+            ? tr('At the top of the white panel, tap <strong>Create your account</strong>. Its page starts with <strong>Continue with Apple</strong> and <strong>Continue with Google</strong> — only the ones your phone offers; under them, enter your email and a password of at least <strong>6 characters</strong>. Before the account is created, the app asks whether you are an adult: tap <strong>Yes, I’m 18 or older</strong>.')
+            : tr('At the top of the white panel — just above <strong>Welcome back</strong> — tap <strong>Create your account</strong>, then enter your email and a password of at least <strong>6 characters</strong>. Before the account is created, the app asks whether you are an adult: tap <strong>Yes, I’m 18 or older</strong>.'),
           hasAuthEngine
             ? tr('Open the email we send you and tap its button to confirm your address. Back in the app, you go straight in.')
             : tr('Type the <strong>6-digit code</strong> we email you to confirm it\u2019s really you.'),
@@ -117,7 +122,7 @@ function cfManualPatient() {
         problem: tr('One more password is one more thing to forget. With the Apple or Google account already on your phone, getting in takes a single tap — and nothing about you is invented: only what Apple or Google share comes in, and your name stays yours to change.'),
         steps: [
           tr('Tap <strong>Continue with Apple</strong> or <strong>Continue with Google</strong>.'),
-          tr('If your age has not been confirmed on this phone yet, the app first asks once whether you are an adult, as it does for an account made with an e-mail: tap <strong>Yes, I’m 18 or older</strong>.'),
+          tr('Before Apple or Google opens, the app asks whether you are an adult, as it does for an account made with an e-mail: tap <strong>Yes, I’m 18 or older</strong>.'),
           tr('Confirm in the Apple or Google window. If you close it, nothing happens and you are back where you were.')],
         /* CICLO 1.0.8m §4 — with hasPwRule the tip is the same tip, word for word, + ONE
            sentence: no Chronic Friends password, so Settings shows no <strong>Change
@@ -399,7 +404,7 @@ function cfManualPatient() {
       { title: tr('Your radar, live'),
         shot: 'IMG_6945.png',
         where: [tr('Home'), tr('Flare Radar')],
-        body: tr('Everything you log becomes a dot on a live radar — <strong>green dots are helping</strong>, <strong>amber dots deserve a watch</strong>. Below the dial, the strongest signal of the day is named, with its <strong>flare push</strong> percentage and an honest one-line reading. It updates every time you log.'),
+        body: tr('Everything you log becomes a dot on a live radar — <strong>green dots are helping</strong>, <strong>amber dots deserve a watch</strong>. Below the dial, the strongest signal of the day is named, with its category in its colour — <strong>Driver</strong>, <strong>Watch</strong> or <strong>Helping</strong> — and an honest one-line reading. It updates every time you log.'),
         problem: tr('Flares rarely arrive out of nowhere — they build quietly for days while everything still feels \u201cfine.\u201d The radar reads those early signals in your own data and gives you a head start you\u2019d otherwise never get.'),
         tip: tr('The radar is guidance, not a diagnosis. It can never replace your doctor.') },
 
@@ -554,13 +559,13 @@ function cfManualPatient() {
       { title: tr('Check your reminders will arrive'),
         shot: 'img-notifhealth.png',
         where: [tr('Medication')],
-        body: tr('A reminder that never rings is worse than no reminder at all \u2014 and every Android phone hides the switches somewhere different. In <strong>Medication</strong>, open <strong>Will your reminders reach you?</strong>: the screen names your own next dose \u2014 the medicine and the hour \u2014 and answers plainly, <strong>It will sound</strong> or <strong>It will NOT sound</strong>. When something is blocking it there is a single button, <strong>Fix it now</strong>, which opens the exact screen on your phone for that one problem; solve it and the next one, if there is one, takes its place. <strong>Ring it now, so you hear it</strong> makes your phone ring on the spot, so you never have to take our word for it. Everything the app looked at \u2014 notifications, exact timing, battery saving, the reminder sound, the note for Xiaomi, Huawei, OPPO and vivo phones, and how many reminders this phone is holding \u2014 is folded under <strong>See what was checked</strong>. If your phone cannot deliver them, a small card on the Medication screen says so.'),
-        problem: tr('Silence is the one failure this app cannot afford, and we cannot guess how your phone is configured \u2014 so the app asks it and tells you honestly. On Xiaomi, Huawei, OPPO and vivo phones a short note points at the setting that stops apps in the background. Nothing we do not know is ever shown as a problem.'),
+        body: hasLastAt ? tr('A reminder that never rings is worse than no reminder at all — and every Android phone hides the switches somewhere different. In <strong>Medication</strong>, open <strong>Will your reminders reach you?</strong>: the screen names your own next dose — the medicine and the hour — and answers plainly, <strong>It will sound</strong> or <strong>It will NOT sound</strong>. Under the answer it also says until when your reminders are scheduled on this phone: open Chronic Friends before then and they carry on. When something is blocking it there is a single button, <strong>Fix it now</strong>, which opens the exact screen on your phone for that one problem; solve it and the next one, if there is one, takes its place. <strong>Ring it now, so you hear it</strong> makes your phone ring on the spot, so you never have to take our word for it. Everything the app looked at — notifications, exact timing, battery saving, the reminder sound, the note for Xiaomi, Huawei, OPPO and vivo phones, and how many reminders this phone is holding — is folded under <strong>See what was checked</strong>. If your phone cannot deliver them, a small card on the Medication screen says so.') : tr('A reminder that never rings is worse than no reminder at all \u2014 and every Android phone hides the switches somewhere different. In <strong>Medication</strong>, open <strong>Will your reminders reach you?</strong>: the screen names your own next dose \u2014 the medicine and the hour \u2014 and answers plainly, <strong>It will sound</strong> or <strong>It will NOT sound</strong>. When something is blocking it there is a single button, <strong>Fix it now</strong>, which opens the exact screen on your phone for that one problem; solve it and the next one, if there is one, takes its place. <strong>Ring it now, so you hear it</strong> makes your phone ring on the spot, so you never have to take our word for it. Everything the app looked at \u2014 notifications, exact timing, battery saving, the reminder sound, the note for Xiaomi, Huawei, OPPO and vivo phones, and how many reminders this phone is holding \u2014 is folded under <strong>See what was checked</strong>. If your phone cannot deliver them, a small card on the Medication screen says so.'),
+        problem: tr('Silence is the one failure this app cannot afford, and we cannot guess how your phone is configured — so the app asks it and tells you honestly. On Xiaomi, Huawei, OPPO, realme, OnePlus and vivo phones a short note points at the setting that stops apps in the background. Nothing we do not know is ever shown as a problem.'),
         steps: [
           tr('In <strong>Medication</strong>, tap <strong>Will your reminders reach you?</strong>'),
           tr('Read the answer for your next dose \u2014 if it says <strong>It will NOT sound</strong>, tap <strong>Fix it now</strong>.'),
           tr('Tap <strong>Ring it now, so you hear it</strong> and listen.')],
-        tip: tr('This screen never changes your reminders \u2014 it only looks and opens your phone\u2019s settings. On a computer there is nothing to check: reminders ring in the phone app.') },
+        tip: tr('This screen never changes your reminders — it only looks and opens your phone’s settings. On a computer there is nothing to check: reminders ring in the phone app. After an Android phone restarts, reminders come back once you unlock it; one that was due before then may not ring.') },
     ] },
 
   /* ---------- 8. MEDITATION ---------- */
@@ -742,7 +747,7 @@ function cfManualPatient() {
          showed the old wall: taken off, the file stays as history. */
       { title: tr('Posts & the feed'),
         where: [tr('Community'), tr('Posts')],
-        body: tr('Open <strong>Community</strong> and you land on <strong>Posts</strong> — a wall where people share experiences, questions and small wins, each post across the whole screen, with its photo when it has one (tap the photo to see it full size). Tap <strong>❤</strong> to support a post, the bubble to comment, and <strong>Add</strong> next to a name to ask for that person’s friendship. To share your own, tap <strong>What would you like to share?</strong>: in <strong>Create post</strong>, <strong>Where? Choose</strong> comes with nothing marked — you decide whether the post is for <strong>All conditions</strong> or for yours — and the language is your app’s, which you can change. The button at the top of the wall chooses which posts you see. The tabs across the top switch between Posts, Chronic Friends, Best Chronic Friends and Doctors.'),
+        body: tr('Open <strong>Community</strong> and you land on <strong>Posts</strong> — a wall where people share experiences, questions and small wins, each post across the whole screen, with its photo when it has one (tap the photo to see it full size). Tap <strong>❤</strong> to support a post, the bubble to comment, and <strong>Add</strong> next to a name to ask for that person’s friendship. To share your own, tap <strong>What would you like to share?</strong>: in <strong>Create post</strong>, <strong>Where? Choose</strong> comes with nothing marked — you decide whether the post is for <strong>All conditions</strong> or for yours — and the language is your app’s, which you can change. The button at the top of the wall chooses which posts you see. The tabs across the top switch between Posts, Chronic Friends, Best Chronic Friends and Doctors. To delete one of your posts, tap <strong>⋯</strong> and <strong>Delete post</strong>: it disappears from everyone’s feed, and its text and photo are deleted.'),
         problem: tr('Chronic illness can be isolating, and friends who haven\u2019t lived it often just don\u2019t understand. Here you\u2019re surrounded by people who instantly do — advice, reassurance and \u201cme too\u201d from people walking the same road.') },
 
       /* CICLO 1.0.7f §3 (28 Sep 2026) — «Translate ▾» under every post
@@ -883,7 +888,7 @@ function cfManualPatient() {
     topics: [
       { title: tr('Find a verified doctor'),
         where: [tr('Community'), tr('Doctors')],
-        body: tr('Open <strong>Community \u203a Doctors</strong> to browse specialists — gastroenterology, nutrition, mental health and more. Every doctor\u2019s identity and medical licence are verified before they appear, and each card shows real patient reviews and a <strong>\u201cLicensed in \u2026\u201d</strong> badge.'),
+        body: tr('Open <strong>Community › Doctors</strong> to browse specialists — gastroenterology, nutrition, mental health and more. Every doctor’s identity and medical licence are verified before they appear, and each card shows a <strong>“Licensed in …”</strong> badge, and stars only once real patients have left reviews.'),
         problem: tr('Finding a specialist who really understands your condition — and getting an appointment — is slow and stressful. Here every doctor is pre-vetted, so you skip the guesswork and the waiting room.'),
         tip: tr('For your safety you only ever see doctors licensed in <strong>your own country</strong>. Change your country at the top of the directory or in Settings.') },
 
@@ -898,7 +903,7 @@ function cfManualPatient() {
 
       { title: tr('Reviews & ratings'),
         where: [tr('Community'), tr('Doctors'), tr('Reviews')],
-        body: tr('A doctor\u2019s star rating is always the <strong>average of real patient reviews</strong> — never a number we invent. After a consultation you can leave your own stars and a few words.'),
+        body: tr('A doctor’s star rating is always the <strong>average of real patient reviews</strong> — never a number we invent. After a consultation you can leave your own stars and a few words. Until a doctor has real reviews, no stars are shown.'),
         problem: tr('Choosing a doctor online usually means trusting a stranger\u2019s marketing. Honest reviews from patients who live with conditions like yours let you choose based on real experiences.') },
     ] },
 
@@ -944,11 +949,22 @@ function cfManualPatient() {
         body: tr('Settings gathers your <strong>profile and avatar</strong>, your <strong>health details</strong>, your <strong>membership</strong>, language, notifications, privacy controls and help — all behind your avatar. Choose how you appear: upload a photo, pick a colour with your initials, or keep the default portrait.'),
         problem: tr('An app that manages your health needs to bend to you, not the other way around. One clear place to control how the app looks, speaks and behaves keeps you in charge.') },
 
+      /* AUDIT1 §16 (Gerhard, 5 Nov · M53) — the unticked box of «Create account» (and of the age
+         question with Apple / Google) and the Settings switch; the title and the <strong> are the
+         switch's own label (i18naudit1c). No shot. */
+      { title: tr('Tips & review requests by email'),
+        where: [tr('Settings')],
+        body: tr('When you create your account with your email, a box under the password fields — always unticked — asks whether we may email you helpful tips and, now and then, a request to review the app. With Apple or Google, the same box is on the age question. Leave it unticked and nothing changes. In <strong>Settings</strong>, the switch <strong>Tips & review requests by email</strong> gives or takes back that permission at any time, with one tap.'),
+        problem: tr('An email you did not ask for is noise. This one is your choice: the box starts unticked, and the switch takes it back as easily as you gave it.') },
+
+      /* POL37 Part C (rule 7) — the body gains one sentence about the notice «We’ve updated our Privacy
+         Policy» (privacypolicy.jsx); the new key = the old body word for word + the sentence (i18npol37),
+         the old key stays in its dictionary, unpainted. */
       { title: tr('Your data is yours'),
         where: [tr('Settings'), tr('Privacy & Data')],
-        body: tr('Under <strong>Privacy & Data</strong> you decide what your data may be used for, <strong>export</strong> everything as one file, <strong>change your password</strong>, or <strong>delete your account</strong> — everything is erased, right away and for good. Tap <strong>Export my data</strong> and your phone opens its own share sheet, so you choose where the file goes: Files, e-mail, or any app you trust.'),
+        body: tr('Under <strong>Privacy & Data</strong> you decide what your data may be used for, <strong>export</strong> everything as one file, <strong>change your password</strong>, or <strong>delete your account</strong> — everything is erased, right away and for good. Tap <strong>Export my data</strong> and your phone opens its own share sheet, so you choose where the file goes: Files, e-mail, or any app you trust. When the Privacy Policy changes in an important way, the app tells you once, with a short notice and a link to read the new version.'),
         problem: tr('Health data is deeply personal, and most apps make it a one-way street. Here it stays yours: you can see it, take it with you, or remove it entirely, at any time.'),
-        tip: tr('Other members only ever see your name and your photo — plus anything you switch on yourself. Your journal is never one of those things.') },
+        tip: isWeb ? tr('Other members only ever see your name and your photo — plus anything you switch on yourself. Your journal is never one of those things. On a shared computer, choose <strong>Yes — log out and remove my data from this computer</strong> when you log out: your data is removed from that computer — including the photos of your <strong>Photo diary</strong> and your <strong>Disease activity</strong> scores, which are only there. If Chronic Friends is open in other tabs or windows, close them first.') : tr('Other members only ever see your name and your photo — plus anything you switch on yourself. Your journal is never one of those things.') },
 
       /* IDS-2 (1 Sep 2026) — the second permission. «Let others find me»
          was consent for a name and a photo; an age and the years with an
@@ -991,14 +1007,6 @@ function cfManualPatient() {
         body: tr('In <strong>Settings</strong>, next to the user manual, <strong>Help &amp; feedback</strong> opens a small sheet: choose <strong>Question</strong>, <strong>Suggestion</strong> or <strong>Problem</strong>, write what you want to tell us and tap <strong>Send by email</strong> — your phone’s mail app opens with the message ready for info@chronicfriends.org. If your phone has no mail app, <strong>Copy our email address</strong> copies it so you can write to us from wherever you like.'),
         problem: tr('A doubt, an idea or something broken should not need a form or an account on another site: one message, from your own mail, that a person reads.'),
         tip: tr('The email carries only your words and, at the end, the app version, the kind of phone and your language — never your name, your account or anything about your health. We usually answer within a few days.') },
-
-      /* CICLO 1.0.8b §17 — only where the mail engine exists (hasMailPrefs, above): a
-         phone without the row must not read about a switch it cannot see. The
-         <strong> is the row's own word (i18nciclo108b). */
-      ...(hasMailPrefs ? [{ title: tr('How to stop the emails'),
-        where: [tr('Settings')],
-        body: tr('Apart from the messages about your account, we send a few short emails on how to use the app: a welcome, gentle reminders and one email per feature. The switch <strong>Emails about the app</strong> in <strong>Settings</strong> stops them whenever you like, and so does the link at the bottom of every email; the verification and account messages still arrive. Nothing about your health is ever in them.'),
-        problem: tr('Emails you did not ask for are noise, and a way out that is hard to find is worse. The switch sits with the other preferences and takes one tap.') }] : []),
     ] },
   ];
 }

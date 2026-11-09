@@ -68,7 +68,7 @@
     var SHARED = {                                   /* keys that intentionally stay global */
       cf_auth_v1: 1, cf_lang: 1,
       cf_creds_v1: 1,                                /* device-wide account registry: email → password hash */
-      cf_posts_archive_v1: 1,                        /* permanent archive of deleted posts/comments — shared, never pruned */
+      cf_posts_archive_v1: 1,                        /* RETIRED (AUDIT1 §7): kept here only so posts.jsx can remove the old device-wide copy */
       cf_account_cleanup_v2: 1,                      /* one-time account-cleanup flag — global so it runs once per device */
       cf_public_profiles_v1: 1,                     /* simulated users/{uid}/public/profile collection — name + avatar ref + lang ONLY */
       cf_public_avatars_v1: 1,                      /* simulated avatar Storage bucket (image only) referenced by cfavatar:<uid> */
@@ -455,6 +455,11 @@ window.CF_FS_TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{"membership":"auto","scan_outco
 <script src="build/i18napple1.js"></script>
 <script src="build/i18naudit1a.js"></script>
 <script src="build/i18nmanual2026as.js"></script>
+<script src="build/i18naudit1b.js"></script>
+<script src="build/i18nmanual2026at.js"></script>
+<script src="build/i18naudit1c.js"></script>
+<script src="build/i18nmanual2026au.js"></script>
+<script src="build/i18npol37.js"></script>
 <script src="build/i18nlifetags.js"></script>
 <script src="build/errorboundary.js"></script>
 <script src="build/profile.js"></script>
@@ -506,11 +511,9 @@ window.CF_FS_TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{"membership":"auto","scan_outco
 <script src="build/flaremodecalendar.js"></script>
 <script src="build/flaremodedash.js"></script>
 <script src="build/flaremodecheckin.js"></script>
-<script src="build/flaremodekitchen.js"></script>
 <script src="build/flaretoolkit2.js"></script>
 <script src="build/flaremodecomfort.js"></script>
 <script src="build/flaremodelights.js"></script>
-<script src="build/flaremodesafety.js"></script>
 <script src="build/flaremodepdf.js"></script>
 <script src="build/flaremodeexit.js"></script>
 <script src="build/flaremodebands.js"></script>
@@ -623,6 +626,6 @@ window.CF_FS_TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{"membership":"auto","scan_outco
 <script src="build/doctorverify.js"></script>
 <script src="build/doctoronboarding.js"></script>
 <script src="build/app.js"></script>
-<script src="web.js?v=20261108184825"></script>
+<script src="web.js?v=20261110000507"></script>
 </body>
 </html>

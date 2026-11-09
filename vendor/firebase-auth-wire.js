@@ -179,7 +179,9 @@
         if (cambio) localStorage.setItem(key, JSON.stringify(m));
       } catch (e) {}
     });
-    return Promise.all([borrarFotosDiario(lu), limpiarCacheFirestore()]).then(function () {}, function () {});
+    /* A11: resuelve { cache: true } solo si la caché de Firestore se vació de verdad (ver limpiarCacheFirestore) */
+    return Promise.all([borrarFotosDiario(lu), limpiarCacheFirestore()])
+      .then(function (r) { return { cache: r[1] === true }; }, function () { return { cache: false }; });
   }
   function borrarFotosDiario(acct) {
     return new Promise(function (res) {
@@ -202,13 +204,59 @@
       };
     });
   }
+  /* A11 (revisión de la Política v3.7, 8 nov 2026 · auditorias/20261108-politica-v37/revision/INFORME.md) — antes se
+     tragaba cualquier error de clearPersistence() y el «Yes» del cierre de sesión daba el borrado por bueno. Ahora
+     contesta true SOLO si la caché de Firestore (IndexedDB) se vació de verdad:
+       · terminate() + clearPersistence(), con un tope (CACHE_MS). Con otra pestaña abierta, el SDK 10.14 de ESA
+         pestaña se cierra solo al ver el borrado (setDatabaseDeletedListener → terminate) y el borrado sigue; una
+         pestaña congelada o colgada puede dejarlo esperando: por eso el tope;
+       · si falla o no acaba a tiempo, borra a mano las bases «firestore/…» de IndexedDB (indexedDB.databases() o, sin
+         ella, el nombre que usa el SDK: firestore/[DEFAULT]/<projectId>/main), con otro tope; «blocked» = no se pudo.
+     Los dos topes caben en los 4 s que esperan logoutAndWipe y wipeAndReload antes de recargar. Sin Firestore en la
+     página no hay caché que vaciar (true). La hoja de Claude Design ya pide cerrar antes las otras pestañas («If
+     Chronic Friends is open in other tabs or windows, close them first.»). Banco: tools/tests/logout-wipe-harness.mjs §14. */
+  var CACHE_MS = 2500, CACHE_IDB_MS = 1200;
+  function conTope(p, ms) { return Promise.race([Promise.resolve(p), new Promise(function (r) { setTimeout(function () { r(false); }, ms); })]); }
+  function borrarIdbFirestore() {
+    var idb = window.indexedDB;
+    if (!idb || typeof idb.deleteDatabase !== 'function') return Promise.resolve(false);
+    var lista = (typeof idb.databases === 'function')
+      ? Promise.resolve().then(function () { return idb.databases(); }).then(function (l) {
+          return (l || []).map(function (d) { return d && d.name; }).filter(function (n) { return typeof n === 'string' && n.indexOf('firestore/') === 0; });
+        }, function () { return null; })
+      : Promise.resolve(null);
+    return lista.then(function (nombres) {
+      /* M4 (2.ª revisión): una lista vacía no prueba nada (un navegador puede no listar todas sus bases): se borra igual la
+         del SDK; borrar una base que no existe cuenta como hecho */
+      if (nombres === null || !nombres.length) {
+        var pid = null;
+        try { pid = window.firebase.app().options.projectId; } catch (e) {}
+        if (!pid) return false;
+        nombres = ['firestore/[DEFAULT]/' + pid + '/main'];
+      }
+      return Promise.all(nombres.map(function (n) {
+        return new Promise(function (res) {
+          var req;
+          try { req = idb.deleteDatabase(n); } catch (e) { return res(false); }
+          req.onsuccess = function () { res(true); };
+          req.onerror = function () { res(false); };
+          req.onblocked = function () { res(false); };
+        });
+      })).then(function (r) { return r.every(function (x) { return x === true; }); });
+    }).then(null, function () { return false; });
+  }
   function limpiarCacheFirestore() {
+    var sdk;
     try {
       var fs = window.firebase && window.firebase.firestore && window.firebase.firestore();
-      if (!fs || typeof fs.terminate !== 'function') return Promise.resolve();
-      return fs.terminate().then(function () { return (typeof fs.clearPersistence === 'function') ? fs.clearPersistence() : null; })
-        .catch(function () {});
-    } catch (e) { return Promise.resolve(); }
+      if (!fs || typeof fs.terminate !== 'function') return Promise.resolve(true);
+      sdk = Promise.resolve().then(function () { return fs.terminate(); }).then(function () {
+        if (typeof fs.clearPersistence !== 'function') return false;
+        return Promise.resolve(fs.clearPersistence()).then(function () { return true; });
+      }).then(null, function () { return false; });
+    } catch (e) { sdk = Promise.resolve(false); }
+    return conTope(sdk, CACHE_MS).then(function (ok) { return ok === true ? true : conTope(borrarIdbFirestore(), CACHE_IDB_MS); })
+      .then(function (ok) { return ok === true; }, function () { return false; });
   }
 
   /* AUDIT1 §15 (8 nov 2026 · decisión 10 de Gerhard del 5 nov · M18) — «Yes — log out and remove my data
@@ -303,9 +351,11 @@
       var limpieza = null;
       try { limpieza = wipeLocalAccount(cloudUid); } catch (e) {}
       try { window.CFAuth && CFAuth.logout(); } catch (e) {}
-      return upTo(limpieza, 4000).then(function () {
+      return upTo(limpieza, 4000).then(function (res) {
         try { location.reload(); } catch (e) {}
-        return { ok: true };
+        /* A11: ya fuera y con el aparato limpio, la página recarga igual (no puede quedarse enseñando la cuenta);
+           cache:false = la copia de Firestore de este navegador no se pudo vaciar (otra pestaña la tenía) */
+        return { ok: true, cache: !!(res && res.cache === true) };
       });
     });
     return wiping;

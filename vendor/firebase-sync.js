@@ -130,13 +130,28 @@
        en otro móvil y la lee el motor de correos (functions/mail-seq.js · conPermiso, y tools/campana-resena.mjs):
        sin un optIn:true aquí no sale ningún correo de consejos ni de reseñas. Al ser una caja más, «Yes — log out
        and remove my data from this computer» no la borra sin haberla subido (CFSync.unsynced la cuenta). */
-    'cf_email_consent_v1'
+    'cf_email_consent_v1',
+
+    /* 🙋 A5 (revisión de la Política v3.7, 8 nov 2026 · auditorias/20261108-politica-v37/revision/INFORME.md) — LOS
+       OTROS DOS PERMISOS DE SALUD vivían SOLO en cada aparato: «Show my details on my profile» (cf-profile-share.js,
+       { shared, version, ts }) y el torneo de pasos (firebase-steps-board.js, { on, ts }). Apagarlos en un móvil no
+       los apagaba en el otro, que volvía a publicar la ficha o a crear la fila del torneo. Ahora viajan con la cuenta
+       como el permiso de correos, con la misma regla (CONSENT: si chocan, gana el «no»), y sus motores obedecen lo que
+       llega de la nube (el aviso 'cf-sync-cloud', uno por foto de la nube). «Let others find me» ya vivía en la cuenta
+       (firebase-directory.js). */
+    'cf_share_profile_v1', 'cf_steps_board_v1'
   ];
   var HEALTH_SET = {}; HEALTH_KEYS.forEach(function (k) { HEALTH_SET[k] = true; });
   /* 🙋 AUDIT1 §16 · revisión 2.ª pasada (8 nov 2026, S1) — un PERMISO es UNA decisión: no se junta campo a campo como
      el diario (ver resolve). Juntándolo, el «sí» de un móvil sin red y el «no» posterior del otro daban
      { optIn: true } con la hora del «no»: un permiso que nadie dio, y el motor de correos mandaba. */
-  var CONSENT = { cf_email_consent_v1: true };
+  /* cada permiso dice cuál es su «sí» (A5: los de la ficha y del torneo también) */
+  var CONSENT = {
+    cf_email_consent_v1: function (o) { return o.optIn === true; },
+    /* M7: el «sí» de la ficha es el mismo que mira cf-profile-share.js allowed(): shared Y la versión de lo que se publica */
+    cf_share_profile_v1: function (o) { var v = (window.CFProfileShare && window.CFProfileShare.version) || '2026-09'; return o.shared === true && o.version === v; },
+    cf_steps_board_v1: function (o) { return o.on === true; }
+  };
 
   var MAX_BYTES = 900000;               /* margen bajo el límite de 1 MiB/doc de Firestore */
   var META_KEY = 'cf_sync_meta_v1';     /* { caja: ts de la versión de la nube que es la base } (NO sube) */
@@ -471,7 +486,13 @@
     /* 🔒 FB22 — la marca de la bienvenida solo va HACIA DELANTE: un «0» provisional de un
        móvil nuevo nunca deshace un «1». */
     if (base === 'cf_onboarded_v1' && (L === '1' || Cl === '1')) return L === '1' ? { write: '1' } : { apply: Cl };
-    if (!cloudMoved && (known || meta > 0)) return { write: L };         /* la nube sigue en la base: lo de aquí es lo nuevo */
+    var nubeQuieta = !cloudMoved && (known || meta > 0);
+    /* 🙋 PERMISOS (revisión v3.7, 8 nov 2026): la HORA no basta para saber si la nube sigue en la base. Otro móvil con
+       el reloj ATRASADO pudo escribir un «no» con un ts menor que nuestra base: la nube cambió de valor sin «moverse»,
+       y antes subía lo de aquí encima (un «sí» pendiente tapaba ese «no»). En un permiso, la nube solo está quieta si
+       además su VALOR es el de la base; si no, decide la regla de abajo (gana el «no»). */
+    if (nubeQuieta && CONSENT[base] && known && hstr(Cl) !== loadMap(HASH_KEY)[base]) nubeQuieta = false;
+    if (nubeQuieta) return { write: L };         /* la nube sigue en la base: lo de aquí es lo nuevo */
     var Lo = parseObj(L), Co = parseObj(Cl);
     /* 🙋 S1 · el permiso cambiado en los DOS lados (aquí y en la nube) no se junta: se queda UNA de las dos elecciones.
        · si no coinciden, GANA EL «NO»: retirar el permiso tiene que valer siempre (RGPD art. 7.3) y la hora (ts) de
@@ -482,7 +503,7 @@
     if (CONSENT[base] && (Lo || Co)) {
       if (!Lo) return { apply: Cl, lost: true };
       if (!Co) return { write: L };
-      var lSi = Lo.optIn === true, cSi = Co.optIn === true;
+      var lSi = CONSENT[base](Lo), cSi = CONSENT[base](Co);
       if (lSi !== cSi) return lSi ? { apply: Cl, lost: true } : { write: L };
       if (!known) return { apply: Cl, lost: true };
       var lTs = typeof Lo.ts === 'number' ? Lo.ts : null, cTs = typeof Co.ts === 'number' ? Co.ts : null;
@@ -676,6 +697,9 @@
         /* H2: si no se pudo guardar aquí (almacenamiento lleno), ni base nueva ni repetir al instante */
         if (plan.apply !== L && !applyOk(fullKey, plan.apply)) { retryLater(); return null; }
         setBase(base, plan.apply, cloudTs);
+        /* M1 (2.ª revisión): un PERMISO que cambia aquí al decidir el choque avisa a su motor (ficha, torneo), que lo
+           vuelve a mirar; no es una foto del servidor entera, así que no cuenta como «ya he visto la nube» */
+        if (CONSENT[base] && plan.apply !== L) { try { window.dispatchEvent(new CustomEvent('cf-sync-permiso', { detail: { key: base } })); } catch (e) {} }
         return null;
       }
 
@@ -727,7 +751,7 @@
   }
 
   /* ---- lo que llega de la nube (escucha en vivo) ------------------------ */
-  function onCloudDoc(d) {
+  function onCloudDoc(d, deCache) {
     var base = d._id;
     /* CHAT1: una caja que subió aquí OTRA cuenta de un móvil compartido (su `key` lleva otro
        espacio) no es de esta persona: no se aplica, y se repone la propia si la hay. */
@@ -740,10 +764,29 @@
     var cloudTs = d.ts || 0;
     var localTs = loadMap(META_KEY)[base] || 0;
     var known = baseKnown(base);
-    if (known && !(cloudTs > localTs)) return;                      /* nada más nuevo que la base de aquí */
     var lk = localKeyOf(d, base);
     var incoming = toLocalValue(base, d.value);                     /* FB13: URL de foto lista para <img> */
+    /* nada más nuevo que la base de aquí… salvo un PERMISO cuyo VALOR cambió en la nube sin que su hora avanzara (un
+       escritor que no la adelanta: otra versión de la app, o la baja del servidor de antes del 8 nov). Revisión v3.7. */
+    /* N2 (3.ª ronda): con una foto de la CACHÉ del aparato, que la nube «cambie de valor sin mover la hora» es lo normal (es lo
+       que vio la última vez, más viejo que su base): solo una foto del SERVIDOR puede probar ese cambio */
+    if (known && !(cloudTs > localTs) && !(!deCache && CONSENT[base] && hstr(incoming) !== loadMap(HASH_KEY)[base])) return;
     var L = safeGet(lk);
+    /* 🙋 M1 (2.ª revisión de los motores v3.7, 8 nov 2026): un PERMISO que la nube dice «no» y aquí «sí» (con base o sin
+       ella, cambiado aquí o no) NO se deja en cola: la regla CONSENT ya sabe que gana el «no», así que se aplica YA y el
+       aviso 'cf-sync-cloud' que sale al acabar esta foto ve el valor final (antes lo decidía syncLoop 1,5 s después, sin
+       avisar, y la fila del torneo se quedaba publicada). Lo de aquí se guarda, como en cualquier choque, en
+       cf_sync_conflicts_v1. Un «sí» que llega con un «no» aquí sigue el camino de siempre (se decide leyendo la nube). */
+    if (!deCache && CONSENT[base] && L != null && L !== incoming) {    /* N2: el atajo, solo con fotos del servidor */
+      var Lp = parseObj(L), Cp = parseObj(incoming);
+      if (Lp && Cp && CONSENT[base](Lp) && !CONSENT[base](Cp)) {
+        /* N1 (3.ª ronda): solo se guarda como «perdido» lo que se cambió AQUÍ; un «sí» de siempre no perdió nada y ocuparía
+           uno de los huecos de cf_sync_conflicts_v1 (echaría una nota del diario que sí se perdió) */
+        if (isDirty(base, L) !== false) keepLost(base, L, cloudTs);
+        if (applyOk(lk, incoming)) setBase(base, incoming, cloudTs);
+        return;
+      }
+    }
     if (!known) {                                                   /* sin huella: motor de antes o móvil nuevo */
       if (L === incoming) { setBase(base, L, cloudTs, photoUrlIn(incoming)); return; }
       if (L == null) { if (applyOk(lk, incoming)) setBase(base, incoming, cloudTs); return; }   /* H2 */
@@ -780,14 +823,21 @@
     try { CF().refreshToken(); } catch (e) {}
 
     /* 1) escucha la colección de salud en la nube */
-    colUnsub = ST().onCol('users/' + u + '/health', function (docs) {
+    colUnsub = ST().onCol('users/' + u + '/health', function (docs, snap) {
       if (!active()) return;                          /* LOGOUT1: la cuenta local ya no está (o es otra): no se baja nada a 'anon' */
       var lc = {};
       (docs || []).forEach(function (d) { if (d && d._id) lc[d._id] = d; });
       lastCloud = lc; cloudSeen = true;
-      (docs || []).forEach(function (d) { if (d && d._id) { try { onCloudDoc(d); } catch (e) {} } });
+      var deCache = !!(snap && snap.metadata && snap.metadata.fromCache);
+      (docs || []).forEach(function (d) { if (d && d._id) { try { onCloudDoc(d, deCache); } catch (e) {} } });
+      /* A5 (8 nov 2026): UN aviso por foto de la nube, cuando ya están aplicadas TODAS sus cajas (el de cada caja,
+         'cf-sync-pulled', sale a mitad: el perfil antes que su permiso). Lo usan cf-profile-share.js y
+         firebase-steps-board.js para no publicar con un permiso viejo de este aparato.
+         M2 (2.ª revisión): detail.fromCache dice si la foto salió de la CACHÉ del aparato (lo que vio la última vez) o del
+         servidor; un «sí» solo se publica tras una foto del servidor. */
+      try { window.dispatchEvent(new CustomEvent('cf-sync-cloud', { detail: { fromCache: deCache } })); } catch (e) {}
       if (Object.keys(pending).length) scheduleFlush();
-    });
+    }, null, { includeMetadataChanges: true });
 
     /* 2) A9 bis: al arrancar se mira SOLO lo cambiado aquí sin subir y lo que aún no tiene huella (antes:
           subían TODAS las cajas a ciegas). Lo segundo, una vez: no depende de que el SDK avise de una foto
