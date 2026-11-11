@@ -448,6 +448,8 @@ function cfManualPatient() {
         steps: [
           tr('Open the <strong>Medication</strong> tab in the bottom bar.'),
           tr('Tap <strong>Add medication</strong> and enter name, dose and schedule.'),
+          /* REC1 (11 Nov 2026) — the switch on a medicine's card is its reminders, not the medicine */
+          tr('The switch beside each medicine\'s name turns its <strong>Reminders</strong> on or off. Switched off, the medicine stays in your list and in <strong>NEXT DOSE</strong>, which then says <strong>Reminders are off</strong>: neither the app nor your phone will remind you of it.'),
           tr('When a dose rings, tap <strong>Take</strong> or <strong>Snooze</strong>.'),
           /* DEVOLUCIÓN-2 30 Aug 2026 §1 — the time chips of a medicine are a
              three-state cycle now (meds.jsx: unlogged → taken → skipped →
